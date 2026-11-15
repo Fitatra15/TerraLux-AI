@@ -118,10 +118,41 @@ class DiagnosisResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     parcel_id: Optional[str] = None
+    session_id: Optional[str] = None
 
 class ChatResponse(BaseModel):
     response: str
     tool_calls: List[Dict[str, Any]] = []
+    session_id: Optional[str] = None
+    message_id: Optional[str] = None
+
+class ChatFeedbackCreate(BaseModel):
+    message_id: str
+    rating: int # 1 for up, -1 for down
+    comment: Optional[str] = None
+
+class ChatFeedbackOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    message_id: str
+    rating: int
+    comment: Optional[str] = None
+    created_at: datetime
+
+class ChatMessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    role: str
+    content: str
+    tool_calls: Optional[Any] = None
+    created_at: datetime
+
+class ChatSessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    parcel_id: Optional[str] = None
+    created_at: datetime
+    messages: List[ChatMessageOut] = []
 
 # --- Crops (Fiche Plante) ---
 class PlantDetailOut(BaseModel):
@@ -177,3 +208,10 @@ class ReforestationZoneOut(BaseModel):
     polygon_geojson: Optional[Dict[str, Any]] = None
     species_proposed: Optional[List[str]] = None
     area_ha: Optional[float] = None
+
+# --- Jumeau de Rupture (Innovation I2) ---
+class RuptureSimulateRequest(BaseModel):
+    region: str = "Luxembourg"
+    stress_type: str = "drought" # drought, cyclone, flood, pathogen
+    duration_days: int = 30
+    country: Optional[str] = None

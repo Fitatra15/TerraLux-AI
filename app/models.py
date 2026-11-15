@@ -4,7 +4,6 @@ from sqlalchemy import (
     Column, String, Text, Numeric, Float, Integer, Boolean,
     DateTime, Date, ForeignKey, JSON
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 from app.db import Base
 from app.config import settings
@@ -12,8 +11,11 @@ from app.config import settings
 def generate_uuid():
     return str(uuid.uuid4())
 
-# Compatibility helper: uses PG_UUID if postgresql else String(36)
 IdColumn = lambda: Column(String(36), primary_key=True, default=generate_uuid)
+
+# =====================================================================
+# V1 Core Tables
+# =====================================================================
 
 class User(Base):
     __tablename__ = "users"
@@ -50,6 +52,7 @@ class Parcel(Base):
     recommendations = relationship("Recommendation", back_populates="parcel", cascade="all, delete-orphan")
     disease_risks = relationship("DiseaseRisk", back_populates="parcel", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="parcel", cascade="all, delete-orphan")
+    passports = relationship("ResiliencePassport", back_populates="parcel", cascade="all, delete-orphan")
 
 
 class ParcelPhoto(Base):
@@ -60,6 +63,8 @@ class ParcelPhoto(Base):
     path = Column(Text, nullable=False)
     taken_at = Column(DateTime, default=datetime.utcnow)
     size_bytes = Column(Integer, nullable=True)
+    consent_given = Column(Boolean, default=False) # RGPD
+    delete_after = Column(DateTime, nullable=True) # Rétention 24 mois
 
     parcel = relationship("Parcel", back_populates="photos")
 
@@ -99,10 +104,10 @@ class SoilProfile(Base):
     parcel_id = Column(String(36), ForeignKey("parcels.id"), nullable=False)
     depth_cm = Column(String(50), nullable=False) # '0-5', '5-15', '15-30'
     soc = Column(Float, nullable=True) # Soil Organic Carbon (g/kg)
-    nitrogen = Column(Float, nullable=True) # Total Nitrogen (cg/kg or g/kg)
+    nitrogen = Column(Float, nullable=True) # Total Nitrogen (g/kg)
     cec = Column(Float, nullable=True) # Cation Exchange Capacity (cmol/kg)
     ph = Column(Float, nullable=True) # pH H2O
-    clay = Column(Float, nullable=True) # % or g/kg
+    clay = Column(Float, nullable=True)
     sand = Column(Float, nullable=True)
     silt = Column(Float, nullable=True)
     wrb_class = Column(String(100), nullable=True)
@@ -166,7 +171,7 @@ class Recommendation(Base):
     score = Column(Float, nullable=False)
     reasons = Column(JSON, nullable=False) # {positive:[], negative:[], rotation:str}
     created_at = Column(DateTime, default=datetime.utcnow)
-    engine_version = Column(String(50), default="rules-v1")
+    engine_version = Column(String(50), default="rules-v2")
 
     parcel = relationship("Parcel", back_populates="recommendations")
     plant = relationship("Plant")
@@ -217,7 +222,148 @@ class ReforestationZone(Base):
 
     id = IdColumn()
     name = Column(String(255), nullable=True)
-    risk_type = Column(String(100), nullable=True) # drought, cyclone, erosion
-    polygon_geojson = Column(JSON, nullable=True) # GeoJSON polygon geometry
-    species_proposed = Column(JSON, nullable=True) # List of proposed tree species
+    risk_type = Column(String(100), nullable=True)
+    polygon_geojson = Column(JSON, nullable=True)
+    species_proposed = Column(JSON, nullable=True)
     area_ha = Column(Float, nullable=True)
+
+# =====================================================================
+# V2 Tables: Fiabilité, Chatbot V2, I1, I2, I3, RGPD
+# =====================================================================
+
+class GroundTruth(Base):
+    """Vérité terrain pour le backtesting (Prompt 8)."""
+    __tablename__ = "ground_truth"
+
+    id = IdColumn()
+    parcel_id = Column(String(36), nullable=True)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    country = Column(String(10), nullable=False)
+    region = Column(String(100), nullable=True)
+    actual_crop_id = Column(String(36), ForeignKey("plants.id"), nullable=False)
+    season = Column(String(50), nullable=True)
+    year = Column(Integer, nullable=True)
+    source = Column(String(100), default="field_survey") # 'field_survey', 'faostat', 'cooperative'
+    confidence = Column(Float, default=1.0)
+
+    actual_crop = relationship("Plant")
+
+
+class BacktestRun(Base):
+    """Rapports d'évaluation du backtesting (Prompt 8)."""
+    __tablename__ = "backtest_runs"
+
+    id = IdColumn()
+    run_at = Column(DateTime, default=datetime.utcnow)
+    engine_version = Column(String(50), default="rules-v2")
+    n_parcels = Column(Integer, nullable=False)
+    top1_accuracy = Column(Float, nullable=False)
+    top3_accuracy = Column(Float, nullable=False)
+    mrr = Column(Float, nullable=False) # Mean Reciprocal Rank
+    report_path = Column(Text, nullable=True)
+    metrics_breakdown = Column(JSON, nullable=True)
+
+
+class ChatSession(Base):
+    """Sessions de conversation chatbot avec mémoire (Prompt 7)."""
+    __tablename__ = "chat_sessions"
+
+    id = IdColumn()
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    parcel_id = Column(String(36), ForeignKey("parcels.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    """Messages avec rôle, contenu et appels d'outils (Prompt 7)."""
+    __tablename__ = "chat_messages"
+
+    id = IdColumn()
+    session_id = Column(String(36), ForeignKey("chat_sessions.id"), nullable=False)
+    role = Column(String(20), nullable=False) # 'user', 'assistant', 'tool'
+    content = Column(Text, nullable=False)
+    tool_calls = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    session = relationship("ChatSession", back_populates="messages")
+    feedbacks = relationship("ChatFeedback", back_populates="message", cascade="all, delete-orphan")
+
+
+class ChatFeedback(Base):
+    """Évaluation utilisateur (thumbs up / thumbs down + commentaire) (Prompt 7)."""
+    __tablename__ = "chat_feedback"
+
+    id = IdColumn()
+    message_id = Column(String(36), ForeignKey("chat_messages.id"), nullable=False)
+    rating = Column(Integer, nullable=False) # 1 (up) or -1 (down)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    message = relationship("ChatMessage", back_populates="feedbacks")
+
+
+class LLMAudit(Base):
+    """Logs d'auditabilité souveraine des inférences LLM (Prompt 12)."""
+    __tablename__ = "llm_audit"
+
+    id = IdColumn()
+    session_id = Column(String(36), nullable=True)
+    prompt_hash = Column(String(64), nullable=False)
+    tools_called = Column(JSON, nullable=True)
+    response_hash = Column(String(64), nullable=False)
+    model_name = Column(String(100), default="qwen2.5:7b-local")
+    latency_ms = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ResiliencePassport(Base):
+    """Innovation I1 : Passeport de Résilience certifié bancable (Prompt 9)."""
+    __tablename__ = "resilience_passports"
+
+    id = IdColumn()
+    parcel_id = Column(String(36), ForeignKey("parcels.id"), nullable=False)
+    issued_at = Column(DateTime, default=datetime.utcnow)
+    valid_until = Column(DateTime, nullable=False)
+    richness_index = Column(Float, nullable=False)
+    climate_resilience_score = Column(Float, nullable=False)
+    water_stress_risk = Column(Float, nullable=False)
+    disease_risk_score = Column(Float, nullable=False)
+    global_score = Column(Float, nullable=False) # 0.35 richness + 0.30 climate + 0.20 water + 0.15 (100-disease)
+    pdf_path = Column(Text, nullable=True)
+    qr_code_url = Column(Text, nullable=True)
+    content_hash = Column(String(64), nullable=False) # SHA-256
+    engine_version = Column(String(50), default="rules-v2")
+    data_sources = Column(JSON, nullable=True)
+
+    parcel = relationship("Parcel", back_populates="passports")
+
+
+class RuptureZone(Base):
+    """Innovation I2 : Jumeau de Rupture et propagation de stress (Prompt 10)."""
+    __tablename__ = "rupture_zones"
+
+    id = IdColumn()
+    region = Column(String(100), nullable=False)
+    country = Column(String(10), nullable=False)
+    polygon_geojson = Column(JSON, nullable=True)
+    stress_type = Column(String(50), nullable=False) # drought, cyclone, flood
+    vulnerability_score = Column(Float, nullable=False)
+    propagation_risk = Column(JSON, nullable=True)
+    computed_at = Column(DateTime, default=datetime.utcnow)
+
+
+class FederatedRound(Base):
+    """Innovation I3 : Apprentissage fédéré souverain (Prompt 11)."""
+    __tablename__ = "federated_rounds"
+
+    id = IdColumn()
+    node_id = Column(String(100), nullable=False) # 'luxembourg', 'madagascar_diana'
+    round_number = Column(Integer, nullable=False)
+    model_version = Column(String(50), nullable=False)
+    n_samples = Column(Integer, nullable=False)
+    metrics = Column(JSON, nullable=False)
+    gradient_hash = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

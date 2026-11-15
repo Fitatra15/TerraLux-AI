@@ -24,7 +24,7 @@ from app.models import (
     Event, ReforestationZone
 )
 from app.soil_intelligence import compute_richness_index
-from data_ingestion import DEMO_POINTS, REFERENCE_SOIL_DATA
+from data_ingestion import DEMO_POINTS, REFERENCE_SOIL_DATA, REFERENCE_CLIMATE_DATA
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("terralux.seed")
@@ -148,11 +148,16 @@ def seed_database(dry_run: bool = False):
             # Vérifier si des observations existent déjà pour cette parcelle
             has_obs = db.query(Observation).filter(Observation.parcel_id == parcel.id).first()
             if not has_obs:
-                is_mdg = (info["country"] == "MDG")
-                base_temp = 26.5 if is_mdg else 10.5
-                base_rain = 1350.0 if is_mdg else 845.0
-                base_rh = 82.0 if is_mdg else 76.0
-                base_moist = 0.58 if is_mdg else 0.65
+                clim_ref = REFERENCE_CLIMATE_DATA.get(key, {
+                    "mean_t": 26.5 if info["country"] == "MDG" else 10.5,
+                    "mean_rain": 1350.0 if info["country"] == "MDG" else 845.0,
+                    "mean_rh": 82.0 if info["country"] == "MDG" else 76.0,
+                    "gwetroot": 0.58 if info["country"] == "MDG" else 0.65
+                })
+                base_temp = clim_ref["mean_t"]
+                base_rain = clim_ref["mean_rain"]
+                base_rh = clim_ref["mean_rh"]
+                base_moist = clim_ref["gwetroot"]
 
                 # Enregistrer les métriques agrégées historiques sur 30 ans (1994-2023)
                 for year in range(1994, 2024):

@@ -68,11 +68,11 @@ export default function ParcelDetail() {
 
       // 4. Events
       const eventData = await cachedGet(`/parcels/${id}/events`);
-      setEvents(eventData);
+      setEvents(Array.isArray(eventData) ? eventData : []);
 
       // 5. Diseases
       const disData = await cachedGet(`/parcels/${id}/diseases`);
-      setDiseases(disData);
+      setDiseases(Array.isArray(disData) ? disData : []);
 
     } catch (err) {
       console.error(err);

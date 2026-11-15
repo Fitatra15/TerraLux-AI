@@ -70,6 +70,15 @@ DEMO_POINTS = {
 }
 
 # Scientific fallback data in case of remote service downtime or timeout
+REFERENCE_CLIMATE_DATA = {
+    "luxembourg_ville": {"mean_t": 10.2, "mean_rain": 845.0, "mean_rh": 76.0, "gwetroot": 0.65},
+    "esch_sur_alzette": {"mean_t": 10.5, "mean_rain": 810.0, "mean_rh": 75.0, "gwetroot": 0.63},
+    "antsiranana": {"mean_t": 27.2, "mean_rain": 1120.0, "mean_rh": 78.0, "gwetroot": 0.55},
+    "nosy_be": {"mean_t": 26.2, "mean_rain": 2180.0, "mean_rh": 84.0, "gwetroot": 0.68},
+    "ambanja": {"mean_t": 26.5, "mean_rain": 2050.0, "mean_rh": 83.0, "gwetroot": 0.66},
+    "ambilobe": {"mean_t": 27.9, "mean_rain": 1020.0, "mean_rh": 74.0, "gwetroot": 0.52}
+}
+
 REFERENCE_SOIL_DATA = {
     "luxembourg_ville": {
         "0-5cm": {"soc": 28.5, "nitrogen": 2.4, "cec": 23.1, "ph": 6.6, "clay": 22.0, "sand": 34.0, "silt": 44.0},
@@ -170,10 +179,16 @@ def ingest_nasa_power(point_key: str, info: dict, out_dir: str):
         logger.warning(f"NASA POWER API non accessible ({e}), génération du profil climatologique calibré.")
         
         # Build calibrated climatological profile
-        is_mdg = (info["country"] == "MDG")
-        mean_t = 26.5 if is_mdg else 10.2
-        mean_rain = 1350.0 if is_mdg else 845.0
-        mean_rh = 82.0 if is_mdg else 76.0
+        clim = REFERENCE_CLIMATE_DATA.get(point_key, {
+            "mean_t": 26.5 if info["country"] == "MDG" else 10.2,
+            "mean_rain": 1350.0 if info["country"] == "MDG" else 845.0,
+            "mean_rh": 82.0 if info["country"] == "MDG" else 76.0,
+            "gwetroot": 0.58 if info["country"] == "MDG" else 0.64
+        })
+        mean_t = clim["mean_t"]
+        mean_rain = clim["mean_rain"]
+        mean_rh = clim["mean_rh"]
+        gwetroot = clim["gwetroot"]
         
         data = {
             "type": "Feature",
@@ -183,7 +198,7 @@ def ingest_nasa_power(point_key: str, info: dict, out_dir: str):
                     "T2M_MEAN": mean_t,
                     "PRECTOTCORR_SUM_ANNUAL": mean_rain,
                     "RH2M_MEAN": mean_rh,
-                    "GWETROOT_MEAN": 0.58 if is_mdg else 0.64
+                    "GWETROOT_MEAN": gwetroot
                 },
                 "summary": {
                     "years": 30,

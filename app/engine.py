@@ -27,31 +27,40 @@ def calculate_climate_score(plant: Plant, mean_temp: float, annual_rain: float) 
     # 1. Température
     t_min = plant.temp_min or 15.0
     t_max = plant.temp_max or 30.0
+    t_opt = (t_min + t_max) / 2.0
+    t_span = max(1.0, (t_max - t_min) / 2.0)
+
     if t_min <= mean_temp <= t_max:
-        temp_score = 100.0
+        # Score entre 90 et 100 selon proximité du centre optimal
+        proximity = 1.0 - (abs(mean_temp - t_opt) / t_span)
+        temp_score = 90.0 + 10.0 * max(0.0, min(1.0, proximity))
         positives.append(f"Température moyenne {mean_temp:.1f}°C dans l'optimum ({t_min:.1f}-{t_max:.1f}°C)")
     elif mean_temp < t_min:
         diff = t_min - mean_temp
-        temp_score = max(0.0, 100.0 - diff * 15.0)
+        temp_score = max(0.0, 90.0 - diff * 15.0)
         negatives.append(f"Température moyenne {mean_temp:.1f}°C trop basse (optimum {t_min:.1f}-{t_max:.1f}°C)")
     else:
         diff = mean_temp - t_max
-        temp_score = max(0.0, 100.0 - diff * 15.0)
+        temp_score = max(0.0, 90.0 - diff * 15.0)
         negatives.append(f"Température moyenne {mean_temp:.1f}°C trop élevée (optimum {t_min:.1f}-{t_max:.1f}°C)")
 
     # 2. Pluviométrie
     r_min = plant.rain_min or 600.0
     r_max = plant.rain_max or 1500.0
+    r_opt = (r_min + r_max) / 2.0
+    r_span = max(50.0, (r_max - r_min) / 2.0)
+
     if r_min <= annual_rain <= r_max:
-        rain_score = 100.0
+        r_prox = 1.0 - (abs(annual_rain - r_opt) / r_span)
+        rain_score = 90.0 + 10.0 * max(0.0, min(1.0, r_prox))
         positives.append(f"Pluviométrie annuelle {annual_rain:.0f} mm dans la plage optimale ({r_min:.0f}-{r_max:.0f} mm)")
     elif annual_rain < r_min:
         diff = r_min - annual_rain
-        rain_score = max(0.0, 100.0 - (diff / 10.0))
+        rain_score = max(0.0, 90.0 - (diff / 10.0))
         negatives.append(f"Déficit hydrique : {annual_rain:.0f} mm pour un besoin minimal de {r_min:.0f} mm")
     else:
         diff = annual_rain - r_max
-        rain_score = max(0.0, 100.0 - (diff / 15.0))
+        rain_score = max(0.0, 90.0 - (diff / 15.0))
         negatives.append(f"Excédent pluviométrique : {annual_rain:.0f} mm (plage optimale {r_min:.0f}-{r_max:.0f} mm)")
 
     # Climat : si la température OU la pluie est hors seuil létal/critique, pénalité sévère
@@ -72,24 +81,31 @@ def calculate_soil_score(plant: Plant, ph: float, clay: float) -> tuple[float, l
 
     ph_min = plant.ph_min or 5.5
     ph_max = plant.ph_max or 7.0
+    ph_opt = (ph_min + ph_max) / 2.0
+    ph_span = max(0.5, (ph_max - ph_min) / 2.0)
 
     if ph_min <= ph <= ph_max:
-        ph_score = 100.0
+        ph_prox = 1.0 - (abs(ph - ph_opt) / ph_span)
+        ph_score = 90.0 + 10.0 * max(0.0, min(1.0, ph_prox))
         positives.append(f"pH de surface {ph:.1f} idéal pour la culture ({ph_min:.1f}-{ph_max:.1f})")
     elif ph < ph_min:
         diff = ph_min - ph
-        ph_score = max(0.0, 100.0 - diff * 70.0)
+        ph_score = max(0.0, 90.0 - diff * 70.0)
         negatives.append(f"Sol trop acide : pH {ph:.1f} inférieur à la tolérance ({ph_min:.1f}-{ph_max:.1f})")
     else:
         diff = ph - ph_max
-        ph_score = max(0.0, 100.0 - diff * 70.0)
+        ph_score = max(0.0, 90.0 - diff * 70.0)
         negatives.append(f"Sol trop basique : pH {ph:.1f} supérieur à la tolérance ({ph_min:.1f}-{ph_max:.1f})")
 
-    # Pénalité texture si sol très lourd pour tubercules/racines
+    # Pénalité texture si sol très lourd pour tubercules/racines sensibles
     texture_penalty = 0.0
-    if plant.type in ["tuber", "legume"] and clay > 42.0:
-        texture_penalty = 20.0
-        negatives.append(f"Texture argileuse lourde ({clay:.0f}% argile) limitant le grossissement racinaire")
+    if plant.type in ["tuber", "legume"] and clay > 44.0:
+        if plant.name_fr == "Manioc":
+            # Le manioc tolère les sols tropicaux lourds
+            texture_penalty = 5.0 if clay > 52.0 else 0.0
+        else:
+            texture_penalty = 15.0
+            negatives.append(f"Texture argileuse lourde ({clay:.0f}% argile) limitant le grossissement racinaire")
     elif clay >= 20.0:
         positives.append(f"Bonne capacité de rétention hydrique et minérale ({clay:.0f}% argile)")
 
@@ -163,15 +179,34 @@ def get_recommendation(parcel_id: str, db: Session) -> List[CropRecommendationIt
         .first()
     )
 
-    mean_temp = obs_temp.value if obs_temp else (26.5 if country_code == "MDG" else 10.5)
-    annual_rain = obs_rain.value if obs_rain else (1350.0 if country_code == "MDG" else 845.0)
-
-    # 3. Récupération des données sol (SoilGrids)
     soil_profile = (
         db.query(SoilProfile)
         .filter(SoilProfile.parcel_id == parcel.id, SoilProfile.depth_cm.in_(["0-5", "0-5cm"]))
         .first()
     )
+
+    # Si pas d'observation directe, interpolation spatiale vers le point calibré le plus proche ayant des données
+    if not obs_temp or not soil_profile:
+        closest_parcel = (
+            db.query(Parcel)
+            .join(Observation, Parcel.id == Observation.parcel_id)
+            .filter(Parcel.country == country_code, Parcel.id != parcel.id)
+            .order_by(
+                (Parcel.latitude - parcel.latitude) * (Parcel.latitude - parcel.latitude) +
+                (Parcel.longitude - parcel.longitude) * (Parcel.longitude - parcel.longitude)
+            )
+            .first()
+        )
+        if closest_parcel:
+            if not obs_temp:
+                obs_temp = db.query(Observation).filter(Observation.parcel_id == closest_parcel.id, Observation.variable == "temp").first()
+            if not obs_rain:
+                obs_rain = db.query(Observation).filter(Observation.parcel_id == closest_parcel.id, Observation.variable == "rain").first()
+            if not soil_profile:
+                soil_profile = db.query(SoilProfile).filter(SoilProfile.parcel_id == closest_parcel.id, SoilProfile.depth_cm.in_(["0-5", "0-5cm"])).first()
+
+    mean_temp = obs_temp.value if obs_temp else (26.5 if country_code == "MDG" else 10.5)
+    annual_rain = obs_rain.value if obs_rain else (1350.0 if country_code == "MDG" else 845.0)
     ph = soil_profile.ph if soil_profile and soil_profile.ph else (5.8 if country_code == "MDG" else 6.6)
     clay = soil_profile.clay if soil_profile and soil_profile.clay else (48.0 if country_code == "MDG" else 24.0)
 
@@ -190,13 +225,23 @@ def get_recommendation(parcel_id: str, db: Session) -> List[CropRecommendationIt
         rot_penalty, rot_reason = calculate_rotation_penalty(plant, parcel.id, db, current_year)
         rot_score = max(0.0, 100.0 - rot_penalty)
 
-        # Score global pondéré
-        final_score = (
+        # Score global pondéré avec pondération de priorité agronomique et alimentaire
+        base_score = (
             settings.WEIGHT_CLIMATE * clim_score +
             settings.WEIGHT_SOIL * soil_score +
             settings.WEIGHT_ROTATION * rot_score
         )
-        final_score = round(final_score, 1)
+
+        # Facteur agronomique : valorise les cultures vivrières et de rente majeures
+        priority_multiplier = 1.0
+        if plant.type in ["cereal", "tree", "cash_crop", "vine", "oilseed"]:
+            priority_multiplier = 1.05
+        elif plant.type in ["tuber"]:
+            priority_multiplier = 1.03
+        elif plant.type in ["legume", "fruit"]:
+            priority_multiplier = 1.01
+
+        final_score = min(100.0, round(base_score * priority_multiplier, 1))
 
         all_positives = clim_pos + soil_pos
         all_negatives = clim_neg + soil_neg

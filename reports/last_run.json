@@ -1,0 +1,1 @@
+{'run_id': 'ed1ca57a-130c-43b6-a085-8594edaa4653', 'engine_version': 'rules-v2', 'n_parcels': 21, 'top1_accuracy': 14.3, 'top3_accuracy': 47.6, 'mrr': 0.286, 'is_pilot_ready': False, 'status': 'NON PRÊT POUR LE PILOTE (Top-3: 47.6% < seuil 70%)', 'report_path': 'reports/backtest_report_20261115_182250.html', 'best_cases_count': 3, 'worst_cases_count': 10}

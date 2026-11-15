@@ -1,0 +1,109 @@
+# ==============================================================================
+# TerraLux AI — Déploiement Souverain Européen (docker-compose.eu.yml)
+# Infrastructure 100% conforme RGPD, hébergée sur cloud souverain européen
+# (Scaleway Paris/Amsterdam, OVHcloud Gravelines, Exoscale Bissen Luxembourg)
+# Immunité totale au Cloud Act américain — Souveraineté by Design
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  # Base de données relationnelle & spatiale souveraine
+  db:
+    image: postgis/postgis:15-3.4
+    container_name: terralux-eu-db
+    restart: always
+    environment:
+      POSTGRES_USER: terralux_eu
+      POSTGRES_PASSWORD: ${DB_SOVEREIGN_PASSWORD:-terralux_eu_secure_pass_2026}
+      POSTGRES_DB: terralux_sovereign_db
+    ports:
+      - "127.0.0.1:5432:5432" # Strictement lié au localhost pour la sécurité
+    volumes:
+      - eu_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U terralux_eu -d terralux_sovereign_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - terralux-sovereign-net
+
+  # Stockage d'objets compatible S3 hébergé localement (Zéro AWS S3)
+  storage:
+    image: minio/minio:RELEASE.2024-01-31T20-20-33Z
+    container_name: terralux-eu-storage
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_USER:-terralux_storage_admin}
+      MINIO_ROOT_PASSWORD: ${STORAGE_PASSWORD:-terralux_storage_secret_eu_2026}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - eu_storage_data:/data
+    networks:
+      - terralux-sovereign-net
+
+  # Moteur d'inférence LLM local souverain (Zéro OpenAI, Zéro Cloud Act)
+  llm:
+    image: ollama/ollama:latest
+    container_name: terralux-eu-llm
+    restart: always
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_NUM_PARALLEL=4
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - eu_llm_data:/root/.ollama
+    networks:
+      - terralux-sovereign-net
+
+  # API Backend FastAPI & Frontend Web SPA
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: terralux-eu-api
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      storage:
+        condition: service_started
+      llm:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://terralux_eu:${DB_SOVEREIGN_PASSWORD:-terralux_eu_secure_pass_2026}@db:5432/terralux_sovereign_db
+      - JWT_SECRET=${JWT_SECRET:-terralux_eu_sovereign_master_key_2026}
+      - JWT_ALGORITHM=HS256
+      - MINIO_ENDPOINT=storage:9000
+      - MINIO_ACCESS_KEY=${STORAGE_USER:-terralux_storage_admin}
+      - MINIO_SECRET_KEY=${STORAGE_PASSWORD:-terralux_storage_secret_eu_2026}
+      - MINIO_BUCKET=terralux-sovereign-data
+      - OLLAMA_URL=http://llm:11434
+      - LLM_MODEL=qwen2.5:7b-instruct
+      - ENVIRONMENT=production
+      # Garanties de Souveraineté & Conformité RGPD
+      - SOVEREIGN_PROVIDER=Scaleway-Exoscale-EU
+      - DATA_RESIDENCY=EU-LUXEMBOURG
+      - CLOUD_ACT_IMMUNITY=TRUE
+      - COMPLIANCE_FRAMEWORK=GDPR_ART30_ART17_SECNUMCLOUD
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./reports:/app/reports
+    networks:
+      - terralux-sovereign-net
+
+networks:
+  terralux-sovereign-net:
+    driver: bridge
+
+volumes:
+  eu_pgdata:
+  eu_storage_data:
+  eu_llm_data:
