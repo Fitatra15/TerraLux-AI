@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import get_db, init_db
+from app.db import get_db, init_db, SessionLocal
 from app.models import (
     User, Parcel, ParcelPhoto, Observation, Event, SoilProfile,
     Plant, PlantCountry, CropHistory, Recommendation, Disease, DiseaseRisk,
@@ -37,6 +37,13 @@ from app.engine import get_recommendation
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    try:
+        with SessionLocal() as db_session:
+            if db_session.query(Plant).count() == 0:
+                from db_seed import seed_database
+                seed_database()
+    except Exception as e:
+        print(f"Notice auto-seed: {e}")
     yield
 
 app = FastAPI(

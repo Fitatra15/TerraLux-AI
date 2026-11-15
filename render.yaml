@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: terralux-ai
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PROJECT_NAME
+        value: "TerraLux AI"
+      - key: VERSION
+        value: "1.0.0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: '["*"]'
+      - key: DATABASE_URL
+        value: "sqlite:///./terralux.db"

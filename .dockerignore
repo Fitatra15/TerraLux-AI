@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+*.db
+.pytest_cache/
+.git/
+.vscode/
+.idea/
+frontend/node_modules/
+frontend/dist/
+reports/passports/*.pdf
+reports/*.html
