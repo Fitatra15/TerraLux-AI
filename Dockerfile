@@ -33,10 +33,12 @@ COPY . .
 # Copy compiled frontend SPA from Stage 1
 COPY --from=frontend-builder /build/dist ./frontend/dist
 
-# Ensure writable directories exist with full permissions for non-root cloud containers
-RUN mkdir -p uploads reports/passports data && chmod -R 777 uploads reports data /app
+# Create standard UID 1000 user for Hugging Face Spaces & security
+RUN useradd -m -u 1000 user || true
+RUN mkdir -p uploads reports/passports data && chown -R 1000:1000 /app && chmod -R 777 /app
+USER 1000
 
-ENV PORT=8000
-EXPOSE 8000 7860
+ENV PORT=7860
+EXPOSE 7860 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860}"]

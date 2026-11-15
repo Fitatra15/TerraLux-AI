@@ -1,3 +1,13 @@
+---
+title: TerraLux AI
+emoji: 🌱
+colorFrom: green
+colorTo: emerald
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # TerraLux AI 🌍🌾
 ### Infrastructure de Décision Agronomique Souveraine, Explicable et Multimodale
 **Grand-Duché de Luxembourg (Tempéré) & République de Madagascar — Région Diana (Tropical)**
