@@ -1,0 +1,32 @@
+{
+  "wrb_class": "Ferralsol rhodi-lixique",
+  "depths": {
+    "0-5cm": {
+      "soc": 21.4,
+      "nitrogen": 1.6,
+      "cec": 14.2,
+      "ph": 5.8,
+      "clay": 48.0,
+      "sand": 32.0,
+      "silt": 20.0
+    },
+    "5-15cm": {
+      "soc": 16.2,
+      "nitrogen": 1.2,
+      "cec": 13.1,
+      "ph": 5.7,
+      "clay": 52.0,
+      "sand": 29.0,
+      "silt": 19.0
+    },
+    "15-30cm": {
+      "soc": 11.5,
+      "nitrogen": 0.8,
+      "cec": 11.8,
+      "ph": 5.6,
+      "clay": 55.0,
+      "sand": 27.0,
+      "silt": 18.0
+    }
+  }
+}

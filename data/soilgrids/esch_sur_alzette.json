@@ -1,0 +1,32 @@
+{
+  "wrb_class": "Luvisol haplique",
+  "depths": {
+    "0-5cm": {
+      "soc": 25.2,
+      "nitrogen": 2.1,
+      "cec": 21.8,
+      "ph": 6.8,
+      "clay": 28.0,
+      "sand": 26.0,
+      "silt": 46.0
+    },
+    "5-15cm": {
+      "soc": 18.4,
+      "nitrogen": 1.6,
+      "cec": 20.2,
+      "ph": 6.7,
+      "clay": 30.0,
+      "sand": 24.0,
+      "silt": 46.0
+    },
+    "15-30cm": {
+      "soc": 12.0,
+      "nitrogen": 1.1,
+      "cec": 18.5,
+      "ph": 6.6,
+      "clay": 32.0,
+      "sand": 22.0,
+      "silt": 46.0
+    }
+  }
+}

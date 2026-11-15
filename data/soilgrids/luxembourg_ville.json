@@ -1,0 +1,32 @@
+{
+  "wrb_class": "Cambisol calcaro-eutrique",
+  "depths": {
+    "0-5cm": {
+      "soc": 28.5,
+      "nitrogen": 2.4,
+      "cec": 23.1,
+      "ph": 6.6,
+      "clay": 22.0,
+      "sand": 34.0,
+      "silt": 44.0
+    },
+    "5-15cm": {
+      "soc": 21.0,
+      "nitrogen": 1.9,
+      "cec": 21.5,
+      "ph": 6.5,
+      "clay": 24.0,
+      "sand": 32.0,
+      "silt": 44.0
+    },
+    "15-30cm": {
+      "soc": 14.5,
+      "nitrogen": 1.3,
+      "cec": 19.8,
+      "ph": 6.4,
+      "clay": 26.0,
+      "sand": 30.0,
+      "silt": 44.0
+    }
+  }
+}

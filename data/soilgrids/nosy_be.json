@@ -1,0 +1,32 @@
+{
+  "wrb_class": "Nitisol andique",
+  "depths": {
+    "0-5cm": {
+      "soc": 32.0,
+      "nitrogen": 2.8,
+      "cec": 26.4,
+      "ph": 6.1,
+      "clay": 38.0,
+      "sand": 35.0,
+      "silt": 27.0
+    },
+    "5-15cm": {
+      "soc": 24.5,
+      "nitrogen": 2.0,
+      "cec": 23.5,
+      "ph": 6.0,
+      "clay": 42.0,
+      "sand": 32.0,
+      "silt": 26.0
+    },
+    "15-30cm": {
+      "soc": 18.0,
+      "nitrogen": 1.4,
+      "cec": 20.1,
+      "ph": 5.9,
+      "clay": 45.0,
+      "sand": 30.0,
+      "silt": 25.0
+    }
+  }
+}

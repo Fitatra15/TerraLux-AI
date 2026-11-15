@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+*.db
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# IDE
+.idea/
+.vscode/

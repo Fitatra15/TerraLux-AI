@@ -1,0 +1,32 @@
+{
+  "wrb_class": "Fluvisol alluvionnaire",
+  "depths": {
+    "0-5cm": {
+      "soc": 27.8,
+      "nitrogen": 2.3,
+      "cec": 18.9,
+      "ph": 6.3,
+      "clay": 32.0,
+      "sand": 42.0,
+      "silt": 26.0
+    },
+    "5-15cm": {
+      "soc": 20.4,
+      "nitrogen": 1.7,
+      "cec": 17.2,
+      "ph": 6.2,
+      "clay": 35.0,
+      "sand": 40.0,
+      "silt": 25.0
+    },
+    "15-30cm": {
+      "soc": 15.1,
+      "nitrogen": 1.2,
+      "cec": 15.6,
+      "ph": 6.1,
+      "clay": 38.0,
+      "sand": 38.0,
+      "silt": 24.0
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "wrb_class": "Vertisol p\u00e9lic",
+  "depths": {
+    "0-5cm": {
+      "soc": 23.6,
+      "nitrogen": 1.8,
+      "cec": 24.5,
+      "ph": 6.7,
+      "clay": 54.0,
+      "sand": 22.0,
+      "silt": 24.0
+    },
+    "5-15cm": {
+      "soc": 18.9,
+      "nitrogen": 1.4,
+      "cec": 23.8,
+      "ph": 6.8,
+      "clay": 58.0,
+      "sand": 20.0,
+      "silt": 22.0
+    },
+    "15-30cm": {
+      "soc": 13.2,
+      "nitrogen": 0.9,
+      "cec": 22.1,
+      "ph": 6.9,
+      "clay": 62.0,
+      "sand": 18.0,
+      "silt": 20.0
+    }
+  }
+}
