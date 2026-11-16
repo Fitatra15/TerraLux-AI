@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 from typing import List, Optional
 from datetime import datetime, date
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -680,8 +681,15 @@ def create_or_update_passport(parcel_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/passport/{parcel_id}", tags=["Innovation I1 - Passeport"])
-def get_passport_info(parcel_id: str, db: Session = Depends(get_db)):
+def get_passport_info(parcel_id: str, request: Request, db: Session = Depends(get_db)):
     """Consulte les métriques du Passeport de Résilience d'une parcelle."""
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and not request.url.path.startswith("/api"):
+        frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+        index_file = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+
     from app.models import ResiliencePassport
     p = db.query(ResiliencePassport).filter(ResiliencePassport.parcel_id == parcel_id).first()
     if not p:
