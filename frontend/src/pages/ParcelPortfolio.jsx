@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
+import { useTranslation } from 'react-i18next';
 import { 
   Plus, ShieldCheck, Sparkles, MapPin, ArrowUpRight, 
   Leaf, Award, Eye, FileText, ChevronRight, Activity, Globe
@@ -17,6 +18,7 @@ const miniIcon = new L.DivIcon({
 });
 
 export default function ParcelPortfolio() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [parcels, setParcels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ export default function ParcelPortfolio() {
       // High-end demo fallback
       setParcels([
         {
-          id: "p-antsiranana",
+          id: "845ef4e9-b776-40b4-af77-c84510862b1e",
           name: "Antsiranana Vanilla & Rice Estate",
           country: "MDG",
           region: "Diana",
@@ -56,7 +58,7 @@ export default function ParcelPortfolio() {
           top_crops: ["Vanille Bourbon", "Riz pluvial", "Manioc doux"]
         },
         {
-          id: "p-bettendorf",
+          id: "95304210-d47a-4bef-9d28-d8a07f48dd8b",
           name: "Domaine de la Sûre — Bettendorf",
           country: "LUX",
           region: "Diekirch",
@@ -69,20 +71,20 @@ export default function ParcelPortfolio() {
           top_crops: ["Blé d'hiver", "Colza oléagineux", "Orge brassicole"]
         },
         {
-          id: "p-clervaux",
-          name: "Plateau Ardennais Clervaux",
+          id: "abc8c355-0775-463b-be1d-a705287617d6",
+          name: "Plateau Minier Esch-sur-Alzette",
           country: "LUX",
-          region: "Clervaux",
-          latitude: 50.0547,
-          longitude: 6.0294,
+          region: "Esch",
+          latitude: 49.4958,
+          longitude: 5.9806,
           area_ha: 19.2,
-          soil_type: "Podzolique Léger",
+          soil_type: "Anthrosol Reconstitué",
           score: 78,
           status: "Analyzing",
           top_crops: ["Seigle d'hiver", "Avoine rustique"]
         },
         {
-          id: "p-ambilobe",
+          id: "07c8c5d0-f66b-4aac-8a24-eb369b56c8ea",
           name: "Vallée Mahavavy Ambilobe",
           country: "MDG",
           region: "Diana",
@@ -126,6 +128,13 @@ export default function ParcelPortfolio() {
     return p.country === filterCountry;
   });
 
+  const getStatusText = (st) => {
+    if (st === 'Ready') return t('status.ready');
+    if (st === 'Needs photo') return t('status.needs_photo');
+    if (st === 'Analyzing') return t('status.analyzing');
+    return st;
+  };
+
   return (
     <div className="min-h-screen bg-[#06120D] text-slate-100 py-10 px-4 sm:px-6 lg:px-12 selection:bg-emerald-500/30 selection:text-emerald-200">
       <div className="max-w-7xl mx-auto space-y-10">
@@ -137,32 +146,50 @@ export default function ParcelPortfolio() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono tracking-wide">
               <Globe className="w-3.5 h-3.5" />
-              <span>Sovereign Agronomic Portfolio • Multi-Country (LUX & MDG)</span>
+              <span>{t('brand.tagline')}</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif tracking-tight text-white font-normal">
-              Welcome back, <span className="italic font-serif font-light text-emerald-300">Ilay Mahery</span>
+              {t('portfolio.welcome').split('TerraLux')[0]}
+              <span className="italic font-serif font-light text-emerald-300">TerraLux AI</span>
             </h1>
             <p className="text-slate-400 text-sm max-w-2xl font-light">
-              Suivi en temps réel des actifs fonciers, résilience climatique certifiée par satellite et allocation agro-écologique à haute valeur ajoutée.
+              {t('portfolio.subtitle')}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Filter Pill */}
             <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 backdrop-blur-xl">
-              {['ALL', 'LUX', 'MDG'].map(c => (
-                <button
-                  key={c}
-                  onClick={() => setFilterCountry(c)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all ${
-                    filterCountry === c 
-                      ? 'bg-emerald-500 text-black shadow-glow-mint font-bold' 
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {c === 'ALL' ? 'Tous les actifs' : c === 'LUX' ? '🇱🇺 Luxembourg' : '🇲🇬 Madagascar'}
-                </button>
-              ))}
+              <button
+                onClick={() => setFilterCountry('ALL')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all ${
+                  filterCountry === 'ALL' 
+                    ? 'bg-emerald-500 text-black shadow-glow-mint font-bold' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {t('portfolio.all_assets')}
+              </button>
+              <button
+                onClick={() => setFilterCountry('LUX')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all ${
+                  filterCountry === 'LUX' 
+                    ? 'bg-emerald-500 text-black shadow-glow-mint font-bold' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {t('portfolio.luxembourg')}
+              </button>
+              <button
+                onClick={() => setFilterCountry('MDG')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-medium transition-all ${
+                  filterCountry === 'MDG' 
+                    ? 'bg-emerald-500 text-black shadow-glow-mint font-bold' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {t('portfolio.madagascar')}
+              </button>
             </div>
 
             {/* Killer Feature Pill Button */}
@@ -171,7 +198,7 @@ export default function ParcelPortfolio() {
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black font-semibold text-sm shadow-glow-mint hover:shadow-emerald-400/50 transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Add Parcel</span>
+              <span>{t('actions.add_parcel')}</span>
             </button>
           </div>
         </div>
@@ -218,7 +245,7 @@ export default function ParcelPortfolio() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-mono tracking-wider uppercase px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-slate-300">
-                        {parcel.country === 'LUX' ? '🇱🇺 Luxembourg' : '🇲🇬 Madagascar — Diana'}
+                        {parcel.country === 'LUX' ? t('portfolio.luxembourg') : t('portfolio.madagascar')}
                       </span>
                       {parcel.region && (
                         <span className="text-xs text-slate-400 font-mono">
@@ -236,7 +263,7 @@ export default function ParcelPortfolio() {
                             ? 'bg-blue-400 animate-ping' 
                             : 'bg-amber-400 shadow-glow-gold'
                       }`} />
-                      <span className="text-[11px] font-mono font-medium text-slate-300">{status}</span>
+                      <span className="text-[11px] font-mono font-medium text-slate-300">{getStatusText(status)}</span>
                     </div>
                   </div>
 
@@ -249,7 +276,7 @@ export default function ParcelPortfolio() {
                     </h3>
                     <p className="text-xs font-mono text-slate-400 mt-1 flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                      [{lat.toFixed(4)}, {lng.toFixed(4)}] • {parcel.area_ha || 4.2} hectares • {parcel.soil_type || 'Ferralsol Humique'}
+                      [{lat.toFixed(4)}, {lng.toFixed(4)}] • {parcel.area_ha || 4.2} ha • {parcel.soil_type || 'Ferralsol Humique'}
                     </p>
                   </div>
                 </div>
@@ -267,13 +294,13 @@ export default function ParcelPortfolio() {
                     />
                     <div>
                       <div className="text-xs font-mono uppercase tracking-wider text-slate-400">
-                        Resilience Score
+                        {t('portfolio.resilience_score')}
                       </div>
                       <div className="text-sm font-semibold text-white">
-                        {score >= 85 ? 'Grade AAA • Bancable' : score >= 75 ? 'Grade AA • Très Robuste' : 'Grade A • Modéré'}
+                        {score >= 85 ? t('portfolio.grade_aaa') : score >= 75 ? t('portfolio.grade_aa') : t('portfolio.grade_a')}
                       </div>
                       <div className="text-[11px] text-emerald-400/80 font-mono">
-                        Certifié NASA & SoilGrids
+                        {t('portfolio.certified_data')}
                       </div>
                     </div>
                   </div>
@@ -285,7 +312,7 @@ export default function ParcelPortfolio() {
                       className="px-4 py-2 rounded-xl bg-white/10 hover:bg-emerald-500 hover:text-black text-white text-xs font-medium font-mono border border-white/15 transition-all flex items-center gap-1.5 group/btn"
                     >
                       <Award className="w-3.5 h-3.5 text-emerald-300 group-hover/btn:text-black" />
-                      <span>Passport</span>
+                      <span>{t('actions.view_passport')}</span>
                       <ArrowUpRight className="w-3 h-3 opacity-60" />
                     </Link>
 
@@ -294,13 +321,13 @@ export default function ParcelPortfolio() {
                       className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 text-xs font-mono border border-white/10 transition-all flex items-center gap-1.5"
                     >
                       <Activity className="w-3.5 h-3.5 text-amber-300" />
-                      <span>History</span>
+                      <span>{t('actions.view_history')}</span>
                     </Link>
 
                     <Link
                       to={`/parcel/${parcel.id}`}
                       className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 border border-white/10 transition-all"
-                      title="Fiche Agronomique Complète"
+                      title={t('actions.view_details')}
                     >
                       <Eye className="w-4 h-4" />
                     </Link>
@@ -324,21 +351,21 @@ export default function ParcelPortfolio() {
           <div className="relative w-full max-w-lg rounded-3xl glass-panel p-8 space-y-6 border border-white/20">
             <div className="space-y-1">
               <span className="text-[11px] font-mono text-emerald-400 uppercase tracking-widest">
-                Cadastre Numérique Souverain
+                {t('brand.tagline')}
               </span>
-              <h2 className="text-2xl font-serif text-white">Créer un actif foncier</h2>
+              <h2 className="text-2xl font-serif text-white">{t('portfolio.create_modal_title')}</h2>
               <p className="text-xs text-slate-400">
-                La détection du pays, du climat trentenaire NASA POWER et du profil SoilGrids se fait automatiquement.
+                {t('portfolio.create_modal_desc')}
               </p>
             </div>
 
             <form onSubmit={handleCreateParcel} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono text-slate-300 mb-1">Nom du Domaine ou Parcelle</label>
+                <label className="block text-xs font-mono text-slate-300 mb-1">{t('portfolio.parcel_name_label')}</label>
                 <input
                   type="text"
                   required
-                  placeholder="ex: Verger Clervaux Sud ou Domaine Ankarana"
+                  placeholder={t('portfolio.parcel_name_placeholder')}
                   value={newParcel.name}
                   onChange={e => setNewParcel({ ...newParcel, name: e.target.value })}
                   className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400 transition-colors"
@@ -347,7 +374,7 @@ export default function ParcelPortfolio() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-300 mb-1">Latitude</label>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">{t('portfolio.latitude')}</label>
                   <input
                     type="number"
                     step="0.0001"
@@ -358,7 +385,7 @@ export default function ParcelPortfolio() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-300 mb-1">Longitude</label>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">{t('portfolio.longitude')}</label>
                   <input
                     type="number"
                     step="0.0001"
@@ -372,7 +399,7 @@ export default function ParcelPortfolio() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-300 mb-1">Superficie (ha)</label>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">{t('portfolio.surface')}</label>
                   <input
                     type="number"
                     step="0.1"
@@ -383,7 +410,7 @@ export default function ParcelPortfolio() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-300 mb-1">Région Cible</label>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">{t('portfolio.target_region')}</label>
                   <select
                     value={newParcel.country}
                     onChange={e => setNewParcel({ ...newParcel, country: e.target.value })}
@@ -401,14 +428,14 @@ export default function ParcelPortfolio() {
                   onClick={() => setShowAddModal(false)}
                   className="px-5 py-2.5 rounded-full text-xs font-mono text-slate-400 hover:text-white"
                 >
-                  Annuler
+                  {t('actions.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
                   className="px-6 py-2.5 rounded-full bg-emerald-400 hover:bg-emerald-300 text-black font-semibold text-xs font-mono shadow-glow-mint transition-all"
                 >
-                  {creating ? 'Analyse en cours...' : 'Certifier & Créer'}
+                  {creating ? t('status.analyzing') : t('actions.add_parcel')}
                 </button>
               </div>
             </form>
