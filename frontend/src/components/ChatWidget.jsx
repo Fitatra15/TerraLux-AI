@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Bot, User, Wrench, Sparkles, AlertCircle } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Sparkles, AlertCircle } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 export default function ChatWidget({ parcelId }) {
@@ -142,21 +142,6 @@ export default function ChatWidget({ parcelId }) {
                 >
                   {m.text}
                 </div>
-
-                {/* Function calling audit badge */}
-                {m.tool_calls && m.tool_calls.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {m.tool_calls.map((tc, tIdx) => (
-                      <span
-                        key={tIdx}
-                        className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-mono"
-                      >
-                        <Wrench className="w-3 h-3 text-emerald-600" />
-                        <span>Outil exécuté: {tc.tool}</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             ))}
 

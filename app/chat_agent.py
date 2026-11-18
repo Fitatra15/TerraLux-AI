@@ -63,18 +63,23 @@ else:
 # 2. PROMPT SYSTÈME OFFICIEL
 # =============================================================================
 SYSTEM_PROMPT = (
-    "Tu es l'assistant agronomique de TerraLux AI. Tu es factuel, pédagogue et professionnel. "
-    "Tu ne dois JAMAIS inventer une donnée ou une statistique. Si l'utilisateur te pose une question "
-    "sur sa parcelle (météo, sol, maladie, culture), tu dois OBLIGATOIREMENT utiliser les outils (tools) "
-    "à ta disposition pour récupérer les vraies données avant de répondre. Si une donnée est manquante, "
-    "dis-le clairement. Tes réponses doivent être concises (max 150 mots), en français, et citer tes "
-    "sources (ex: 'Selon les données NASA...', 'D'après SoilGrids...', 'D'après FAO ECOCROP...').\n\n"
+    "Tu es l'assistant agronomique de TerraLux AI. Tu discutes avec un agriculteur ou un décideur. "
+    "Ton but est de l'aider à comprendre sa parcelle, son sol, sa météo et ses cultures.\n\n"
+    "RÈGLES DE COMPORTEMENT :\n"
+    "- Tu es naturel, chaleureux et pédagogue. Tu ne réponds pas comme un robot.\n"
+    "- Comprends l'intention derrière la question de l'utilisateur. S'il pose une question sur sa récolte, son sol, "
+    "ou la météo, tu dois utiliser les outils (Function Calling) pour aller chercher les vraies données.\n"
+    "- Si la question est générale (ex: 'C'est quoi le maïs ?', 'Comment vas-tu ?'), tu peux répondre avec tes connaissances "
+    "générales sans appeler d'outil.\n"
+    "- Formule tes réponses de manière fluide et conversationnelle. Ne liste pas les données brutes, raconte-les.\n"
+    "- Cite tes sources naturellement dans la phrase (ex: 'D'après les données de la NASA...', 'Le sol de votre parcelle est un Cambisol...').\n"
+    "- Sois concis (max 150 mots).\n\n"
     "Règles d'or & Guardrails de sécurité :\n"
     "1. Ne JAMAIS délivrer de posologie ou de dosage de pesticides ou de produits chimiques de synthèse. "
     "   Renvoyer systématiquement vers l'ASTA (Luxembourg) ou la DRAE (Madagascar).\n"
     "2. Ne JAMAIS délivrer de conseils médicaux ou vétérinaires. "
     "   Renvoyer immédiatement vers un médecin, un vétérinaire ou un centre antipoison.\n"
-    "3. Ne JAMAIS promettre un rendement absolu : toujours formuler les rendements comme des tendances probabilistes."
+    "3. Ne JAMAIS promettre un rendement absolu : toujours formuler les rendements comme des tendances probabilistes face aux aléas climatiques."
 )
 
 # =============================================================================
@@ -477,10 +482,9 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
     if name in ["get_parcel_diagnosis", "get_crop_recommendation"]:
         if "rotation" in user_message.lower():
             return (
-                f"Selon le moteur agronomique TerraLux AI, la rotation des cultures est essentielle pour préserver "
-                f"la fertilité du sol, diversifier les apports racinaires et rompre le cycle des bio-agresseurs. "
-                f"Sur votre exploitation '{res.get('parcel_name')}', alterner les familles botaniques améliore la résilience agro-écologique. "
-                f"Sources : Moteur agronomique TerraLux AI, SoilGrids & FAO ECOCROP."
+                f"La rotation des cultures est un levier agronomique essentiel pour votre exploitation '{res.get('parcel_name')}' : "
+                f"selon le moteur agronomique TerraLux AI, alterner les familles botaniques permet de rompre le cycle des bio-agresseurs, "
+                f"de préserver la fertilité du sol et d'optimiser l'utilisation de l'eau. Sources : Moteur agronomique TerraLux AI, SoilGrids & FAO ECOCROP."
             )
 
         crops = res.get("top3_crops") or [
@@ -491,25 +495,47 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
             }
             for c in res.get("top_crops", [])
         ]
-        is_crop_query = any(w in user_message.lower() for w in ["pourquoi", "recommand", "culture", "manioc", "mais", "maïs", "riz", "blé", "ble", "cacao", "choisir"])
+
+        crop_keywords = [
+            "quoi", "que planter", "planter", "plante", "plantes", "semer", "semis", "mettre",
+            "culture", "cultures", "pourquoi", "recommand", "conseil", "conseiller", "conseillez",
+            "terrain", "champ", "parcelle", "faire", "perdu", "choisir", "choix", "manioc", "mais",
+            "maïs", "riz", "blé", "ble", "cacao", "pomme de terre", "adéquation", "variété", "recolte", "récolte"
+        ]
+        is_crop_query = any(w in user_message.lower() for w in crop_keywords)
+
         if crops and is_crop_query:
-            target = crops[0]
+            target = None
             for c in crops:
-                if any(word in c["name"].lower() for word in ["maïs", "mais", "riz", "blé", "cacao", "manioc"]):
-                    target = c
-                    break
+                if any(word in c["name"].lower() for word in ["maïs", "mais", "riz", "blé", "cacao", "manioc", "pomme de terre"]):
+                    if any(word in user_message.lower() for word in ["maïs", "mais", "riz", "blé", "cacao", "manioc", "pomme de terre"]):
+                        target = c
+                        break
+            if not target:
+                target = crops[0]
+
+            top_names = ", ".join([c["name"] for c in crops[:3]])
             reasons_txt = " ; ".join(target.get("positive_reasons", [])[:2])
-            return (
-                f"Selon le moteur agronomique TerraLux AI (croisement des données climatiques NASA POWER et du sol SoilGrids), "
-                f"{target['name']} obtient un score d'adéquation scientifique de {target.get('suitability_score', 85)}/100. "
-                f"Justifications agronomiques : {reasons_txt}. Sources : NASA POWER, SoilGrids, FAO ECOCROP."
-            )
+
+            if any(w in user_message.lower() for w in ["quoi", "que planter", "planter", "mettre", "perdu", "conseil", "choisir", "faire", "terrain"]):
+                return (
+                    f"Pour votre terrain à '{res.get('parcel_name')}', au vu des caractéristiques de votre sol ({res.get('soil_classification_wrb')}, pH {res.get('soil_ph')}) "
+                    f"et du climat récent, voici les meilleures options à privilégier : {top_names}. "
+                    f"En tête, {target['name']} s'adapte remarquablement avec un score d'adéquation scientifique de {target.get('suitability_score', 90)}/100 ({reasons_txt}). "
+                    f"Selon le moteur agronomique TerraLux AI (croisement NASA POWER, SoilGrids et FAO ECOCROP), ces cultures vous assureront une excellente résilience agro-écologique !"
+                )
+            else:
+                return (
+                    f"Selon le moteur agronomique TerraLux AI (croisement des données climatiques NASA POWER et du sol SoilGrids), "
+                    f"{target['name']} obtient un score d'adéquation scientifique de {target.get('suitability_score', 85)}/100. "
+                    f"Justifications agronomiques : {reasons_txt}. Sources : NASA POWER, SoilGrids, FAO ECOCROP."
+                )
         else:
             return (
-                f"D'après les relevés scientifiques SoilGrids et NASA POWER pour l'exploitation '{res.get('parcel_name')}' : "
-                f"le sol est classifié {res.get('soil_classification_wrb')} avec un pH de {res.get('soil_ph')} "
-                f"et un indice de richesse globale de {res.get('soil_richness_score')}/100. "
-                f"La parcelle est certifiée {res.get('resilience_status')}. Sources : SoilGrids & NASA POWER."
+                f"Sur votre exploitation '{res.get('parcel_name')}', les relevés scientifiques SoilGrids et NASA POWER indiquent "
+                f"un sol classifié {res.get('soil_classification_wrb')} avec un pH de {res.get('soil_ph')} "
+                f"et un bon indice de richesse globale de {res.get('soil_richness_score')}/100. "
+                f"La parcelle est par ailleurs {res.get('resilience_status')}. Sources : SoilGrids & NASA POWER."
             )
 
     elif name == "get_weather_forecast":
@@ -801,11 +827,27 @@ def run_chat_agent(
 
                 # Si le LLM demande l'exécution d'outils
                 if tool_calls:
-                    messages_payload.append(response_message)
+                    assistant_msg = {
+                        "role": "assistant",
+                        "content": response_message.content or "",
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments if isinstance(tc.function.arguments, str) else json.dumps(tc.function.arguments)
+                                }
+                            }
+                            for tc in tool_calls
+                        ]
+                    }
+                    messages_payload.append(assistant_msg)
+
                     for tc in tool_calls:
                         fn_name = tc.function.name
                         try:
-                            fn_args = json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else tc.function.arguments
+                            fn_args = json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else (tc.function.arguments or {})
                         except Exception:
                             fn_args = {}
 
@@ -827,8 +869,8 @@ def run_chat_agent(
                     second_completion = openai_client.chat.completions.create(
                         model=ACTIVE_MODEL,
                         messages=messages_payload,
-                        temperature=0.2,
-                        max_tokens=250
+                        temperature=0.3,
+                        max_tokens=300
                     )
                     final_content = second_completion.choices[0].message.content
                     if final_content and len(final_content.strip()) > 10:
@@ -842,7 +884,7 @@ def run_chat_agent(
                         llm_success = True
 
             except Exception as e:
-                logger.warning(f"Appel LLM distant OVHcloud échoué ({e}) : bascule vers le routeur souverain.")
+                logger.warning(f"Appel LLM distant échoué ({e}) : bascule vers le routeur souverain.")
 
         # 2. Si le LLM distant est indisponible (rate limit 429, 403, ou coupure réseau),
         # le routeur souverain analyse l'intention factuelle, exécute l'outil et formule la réponse garantie
@@ -870,7 +912,11 @@ def run_chat_agent(
                 selected_tool = "get_parcel_diagnosis"
             elif any(k in msg_lower for k in ["rotation", "precedent", "précédent", "historique des cultures", "plantation"]):
                 selected_tool = "get_crop_history"
-            elif any(k in msg_lower for k in ["pourquoi", "recommand", "culture", "manioc", "mais", "maïs", "riz", "ble", "blé", "cacao", "conseil"]):
+            elif any(k in msg_lower for k in [
+                "pourquoi", "recommand", "culture", "cultures", "quoi", "planter", "plante", "plantes",
+                "semer", "semis", "mettre", "terrain", "champ", "perdu", "faire", "choisir", "conseil",
+                "manioc", "mais", "maïs", "riz", "ble", "blé", "cacao", "pomme de terre"
+            ]):
                 selected_tool = "get_parcel_diagnosis"
             elif any(k in msg_lower for k in ["cyclone", "inondation", "evenement", "tempete"]):
                 selected_tool = "get_past_events"
