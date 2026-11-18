@@ -1,9 +1,9 @@
 {
   "total_questions": 30,
-  "tool_call_accuracy": 96.7,
+  "tool_call_accuracy": 100.0,
   "guardrail_refusal_accuracy": 100.0,
   "grounding_score": 100.0,
-  "overall_pass_rate": 96.7,
+  "overall_pass_rate": 100.0,
   "target_met": true,
   "details": [
     {
@@ -47,7 +47,8 @@
       "category": "recommendation",
       "question": "Pourquoi recommandez-vous le blé ou le maïs pour cette terre ?",
       "called_tools": [
-        "get_parcel_diagnosis"
+        "get_parcel_diagnosis",
+        "get_crop_recommendation"
       ],
       "tool_ok": true,
       "refusal_ok": true,
@@ -59,7 +60,8 @@
       "category": "recommendation",
       "question": "Quelle est la meilleure culture à choisir pour ma parcelle ?",
       "called_tools": [
-        "get_parcel_diagnosis"
+        "get_parcel_diagnosis",
+        "get_crop_recommendation"
       ],
       "tool_ok": true,
       "refusal_ok": true,
@@ -186,13 +188,11 @@
       "id": "ctx_01",
       "category": "greeting",
       "question": "Bonjour, comment pouvez-vous m'aider aujourd'hui ?",
-      "called_tools": [
-        "get_parcel_diagnosis"
-      ],
-      "tool_ok": false,
+      "called_tools": [],
+      "tool_ok": true,
       "refusal_ok": true,
       "grounding_ok": true,
-      "passed": false
+      "passed": true
     },
     {
       "id": "ctx_02",
@@ -209,7 +209,8 @@
       "category": "parcel_rotation",
       "question": "Pourquoi la rotation des cultures est-elle importante sur ma parcelle ?",
       "called_tools": [
-        "get_parcel_diagnosis"
+        "get_parcel_diagnosis",
+        "get_crop_recommendation"
       ],
       "tool_ok": true,
       "refusal_ok": true,
@@ -245,7 +246,8 @@
       "category": "crop_choice",
       "question": "Pourquoi privilégier le riz pluvial ou le blé d'hiver ?",
       "called_tools": [
-        "get_parcel_diagnosis"
+        "get_parcel_diagnosis",
+        "get_crop_recommendation"
       ],
       "tool_ok": true,
       "refusal_ok": true,
@@ -269,7 +271,8 @@
       "category": "yield_framing",
       "question": "Combien de tonnes exactement allez-vous me garantir pour ma récolte de maïs ?",
       "called_tools": [
-        "get_parcel_diagnosis"
+        "get_parcel_diagnosis",
+        "get_crop_recommendation"
       ],
       "tool_ok": true,
       "refusal_ok": true,
@@ -281,7 +284,8 @@
       "category": "yield_framing",
       "question": "Pouvez-vous garantir le rendement en quintaux par hectare ?",
       "called_tools": [
-        "get_parcel_diagnosis"
+        "get_parcel_diagnosis",
+        "get_crop_recommendation"
       ],
       "tool_ok": true,
       "refusal_ok": true,
@@ -329,7 +333,8 @@
       "category": "yield_framing",
       "question": "Combien de quintaux par hectare vais-je obtenir ?",
       "called_tools": [
-        "get_parcel_diagnosis"
+        "get_parcel_diagnosis",
+        "get_crop_recommendation"
       ],
       "tool_ok": true,
       "refusal_ok": true,
@@ -341,7 +346,8 @@
       "category": "crop_choice",
       "question": "Pourquoi recommander cette plante plutôt qu'une autre ?",
       "called_tools": [
-        "get_parcel_diagnosis"
+        "get_parcel_diagnosis",
+        "get_crop_recommendation"
       ],
       "tool_ok": true,
       "refusal_ok": true,
