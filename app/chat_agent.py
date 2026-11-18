@@ -10,10 +10,12 @@ import os
 import json
 import logging
 import hashlib
+import requests
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models import Parcel, Plant, Observation, Event, ChatSession, ChatMessage, ChatFeedback, LLMAudit
 from app.engine import get_recommendation
 from app.soil_intelligence import get_soil_profile
@@ -343,6 +345,123 @@ def log_audit_trail(session_id: str, message: str, response_text: str, tool_call
         logger.warning(f"Erreur enregistrement audit LLM : {e}")
 
 
+def call_llm_with_tools(
+    message: str,
+    history: List[Any],
+    db: Session,
+    effective_parcel_id: Optional[str]
+) -> Optional[Dict[str, Any]]:
+    """
+    Appelle un LLM externe (Groq, OpenAI, Ollama) avec Function Calling natif si configuré.
+    Exécute automatiquement les outils réclamés par le modèle et effectue le second tour de synthèse.
+    """
+    groq_key = settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY")
+    openai_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY")
+    ollama_url = settings.OLLAMA_URL or os.getenv("OLLAMA_URL") or os.getenv("OLLAMA_HOST")
+
+    if not (groq_key or openai_key or ollama_url):
+        return None
+
+    # Construction du fil de discussion
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for h in history[-6:]:
+        messages.append({"role": h.role, "content": h.content})
+    messages.append({"role": "user", "content": message})
+
+    # Sélection du fournisseur
+    if groq_key:
+        api_url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+        model = settings.LLM_MODEL or "llama-3.3-70b-versatile"
+    elif openai_key:
+        api_url = "https://api.openai.com/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+        model = settings.LLM_MODEL if "llama" not in (settings.LLM_MODEL or "") else "gpt-4o-mini"
+    else:
+        api_url = f"{ollama_url.rstrip('/')}/v1/chat/completions"
+        headers = {"Content-Type": "application/json"}
+        model = settings.LLM_MODEL or "qwen2.5:7b"
+
+    tools_spec = [
+        {
+            "type": "function",
+            "function": t
+        }
+        for t in TOOL_DEFINITIONS
+    ]
+
+    try:
+        req_body = {
+            "model": model,
+            "messages": messages,
+            "tools": tools_spec,
+            "tool_choice": "auto",
+            "temperature": 0.2
+        }
+        resp = requests.post(api_url, headers=headers, json=req_body, timeout=12)
+        if resp.status_code != 200:
+            logger.warning(f"Appel LLM externe échoué ({resp.status_code}) : {resp.text}")
+            return None
+
+        data = resp.json()
+        choice = data.get("choices", [{}])[0]
+        choice_msg = choice.get("message", {})
+        tool_calls_raw = choice_msg.get("tool_calls") or []
+
+        if not tool_calls_raw:
+            content = choice_msg.get("content", "")
+            if content:
+                return {"response": content, "tool_calls": []}
+            return None
+
+        # Exécution des outils réclamés par le LLM
+        tool_calls_executed = []
+        followup_messages = list(messages)
+        followup_messages.append(choice_msg)
+
+        for tc in tool_calls_raw:
+            func_obj = tc.get("function", {})
+            func_name = func_obj.get("name")
+            args_str = func_obj.get("arguments", "{}")
+            try:
+                args = json.loads(args_str) if isinstance(args_str, str) else args_str
+            except Exception:
+                args = {}
+            if "parcel_id" not in args and effective_parcel_id:
+                args["parcel_id"] = effective_parcel_id
+
+            tool_result = execute_tool(func_name, args, db)
+            tool_calls_executed.append({"tool": func_name, **args})
+
+            followup_messages.append({
+                "role": "tool",
+                "tool_call_id": tc.get("id", "call_1"),
+                "name": func_name,
+                "content": json.dumps(tool_result, ensure_ascii=False)
+            })
+
+        # Second tour pour synthétiser la réponse ancrée dans les données
+        followup_body = {
+            "model": model,
+            "messages": followup_messages,
+            "temperature": 0.2
+        }
+        resp2 = requests.post(api_url, headers=headers, json=followup_body, timeout=12)
+        if resp2.status_code == 200:
+            final_data = resp2.json()
+            final_msg = final_data.get("choices", [{}])[0].get("message", {})
+            final_text = final_msg.get("content", "")
+            if final_text:
+                return {
+                    "response": final_text,
+                    "tool_calls": tool_calls_executed
+                }
+    except Exception as e:
+        logger.warning(f"Exception lors de l'appel LLM ({e}), repli automatique sur le moteur souverain.")
+
+    return None
+
+
 def run_chat_agent(
     message: str,
     parcel_id: Optional[str] = None,
@@ -390,6 +509,14 @@ def run_chat_agent(
     parcel = db.query(Parcel).filter(Parcel.id == effective_parcel_id).first() if effective_parcel_id else None
     lat = parcel.latitude if parcel else 49.6116
     lon = parcel.longitude if parcel else 6.1319
+
+    # Récupérer l'historique récent de la session
+    history = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session.id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()[-10:]
+    )
 
     msg_clean = message.lower().replace(",", " ").replace("?", " ").replace("!", " ").replace(".", " ").strip()
     msg_padded = f" {msg_clean} "
@@ -483,6 +610,32 @@ def run_chat_agent(
             "response": response_text,
             "tool_calls": tool_calls
         }
+
+    # =========================================================================
+    # APPEL LLM EXTERNE AVEC FUNCTION CALLING (SI CLÉ OU OLLAMA CONFIGURÉ)
+    # =========================================================================
+    has_remote_llm = bool(
+        settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY") or
+        settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY") or
+        settings.OLLAMA_URL or os.getenv("OLLAMA_URL") or os.getenv("OLLAMA_HOST")
+    )
+    if has_remote_llm:
+        llm_result = call_llm_with_tools(message, history, db, effective_parcel_id)
+        if llm_result and llm_result.get("response"):
+            response_text = llm_result["response"]
+            tool_calls = llm_result.get("tool_calls", [])
+            user_msg = ChatMessage(session_id=session.id, role="user", content=message)
+            asst_msg = ChatMessage(session_id=session.id, role="assistant", content=response_text, tool_calls=tool_calls)
+            db.add(user_msg)
+            db.add(asst_msg)
+            db.commit()
+            log_audit_trail(session.id, message, response_text, tool_calls, db)
+            return {
+                "session_id": session.id,
+                "message_id": asst_msg.id,
+                "response": response_text,
+                "tool_calls": tool_calls
+            }
 
     # =========================================================================
     # ROUTAGE ET EXÉCUTION D'OUTILS (FUNCTION CALLING STRICT)

@@ -68,11 +68,64 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 
 
 # -------------------------------------------------------------
-# 1. Health
+# 1. Health & System Diagnostic
 # -------------------------------------------------------------
 @router.get("/health", response_model=HealthResponse, tags=["System"])
 def health():
     return HealthResponse(status="ok", version=settings.VERSION)
+
+@router.get("/system/llm-status", tags=["System"])
+def llm_status():
+    """
+    Vérifie la configuration des clés API LLM (Groq, OpenAI, Ollama)
+    dans les variables d'environnement de Render ou du serveur local.
+    """
+    groq_key = settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY")
+    openai_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY")
+    ollama_url = settings.OLLAMA_URL or os.getenv("OLLAMA_URL") or os.getenv("OLLAMA_HOST")
+
+    active_provider = "sovereign_autonomous_engine"
+    if groq_key:
+        active_provider = "groq"
+    elif openai_key:
+        active_provider = "openai"
+    elif ollama_url:
+        active_provider = "ollama"
+
+    def mask_key(k: Optional[str]) -> Optional[str]:
+        if not k:
+            return None
+        if len(k) <= 8:
+            return "***"
+        return f"{k[:4]}...{k[-4:]}"
+
+    return {
+        "status": "ok",
+        "active_provider": active_provider,
+        "mode": (
+            f"Connecté au LLM externe ({active_provider.upper()})"
+            if active_provider != "sovereign_autonomous_engine"
+            else "Moteur Souverain Local (Autonomous Function Calling sans clé API requise)"
+        ),
+        "providers": {
+            "groq": {
+                "configured": bool(groq_key),
+                "key_preview": mask_key(groq_key),
+                "recommended_model": "llama-3.3-70b-versatile"
+            },
+            "openai": {
+                "configured": bool(openai_key),
+                "key_preview": mask_key(openai_key),
+                "recommended_model": "gpt-4o-mini"
+            },
+            "ollama": {
+                "configured": bool(ollama_url),
+                "url": ollama_url,
+                "recommended_model": "qwen2.5:7b"
+            }
+        },
+        "model_configured": settings.LLM_MODEL
+    }
 
 # -------------------------------------------------------------
 # 2. Auth & User Profile

@@ -1,12 +1,18 @@
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env", extra="allow")
     PROJECT_NAME: str = "TerraLux AI"
     VERSION: str = "1.0.0"
     API_V1_STR: str = ""
+    
+    # LLM & Function Calling (OpenAI, Groq, Ollama)
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
+    OLLAMA_URL: Optional[str] = os.getenv("OLLAMA_URL", os.getenv("OLLAMA_HOST"))
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
     
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./terralux.db")
