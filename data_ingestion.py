@@ -10,6 +10,7 @@ import json
 import time
 import argparse
 import logging
+from datetime import datetime, timedelta
 from typing import Dict, Any, List
 import requests
 import pandas as pd
@@ -152,9 +153,17 @@ def fetch_with_retry(url: str, params: dict = None, max_retries: int = 3, timeou
     raise RuntimeError(f"Failed to fetch {url} after {max_retries} attempts.")
 
 def ingest_nasa_power(point_key: str, info: dict, out_dir: str):
-    """Télécharge les données NASA POWER ou génère la structure de cache scientifique."""
+    """
+    Télécharge les données NASA POWER en respectant la date de dernière disponibilité (J-4)
+    et combine avec Open-Meteo pour les prévisions à court terme (7 jours).
+    """
     os.makedirs(out_dir, exist_ok=True)
     out_file = os.path.join(out_dir, f"{point_key}.json")
+    
+    # Règle d'or NASA POWER : marge de sécurité de 4 jours pour la disponibilité mondiale
+    latest_avail_dt = datetime.utcnow() - timedelta(days=4)
+    end_str = latest_avail_dt.strftime("%Y%m%d")
+    start_str = (latest_avail_dt - timedelta(days=365)).strftime("%Y%m%d")
     
     url = "https://power.larc.nasa.gov/api/temporal/daily/point"
     params = {
@@ -162,14 +171,13 @@ def ingest_nasa_power(point_key: str, info: dict, out_dir: str):
         "community": "AG",
         "longitude": info["lon"],
         "latitude": info["lat"],
-        "start": "19940101",
-        "end": "20231231",
+        "start": start_str,
+        "end": end_str,
         "format": "JSON"
     }
 
     try:
-        logger.info(f"NASA POWER: Interrogation API pour {info['name']}...")
-        # NASA Power 30-year query can be very large; we do a targeted query or fallback
+        logger.info(f"NASA POWER: Interrogation API pour {info['name']} (période {start_str} -> {end_str})...")
         resp = fetch_with_retry(url, params=params, max_retries=2, timeout=20)
         data = resp.json()
         with open(out_file, "w", encoding="utf-8") as f:

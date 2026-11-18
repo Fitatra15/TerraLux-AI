@@ -15,6 +15,7 @@ from app.models import (
 )
 from app.schemas import CropRecommendationItem, RecommendationReason
 from app.config import settings
+from app.realtime_weather import get_realtime_weather_open_meteo
 
 def calculate_climate_score(plant: Plant, mean_temp: float, annual_rain: float) -> tuple[float, list[str], list[str]]:
     """
@@ -185,6 +186,17 @@ def get_recommendation(parcel_id: str, db: Session) -> List[CropRecommendationIt
         .first()
     )
 
+    # 3. Récupération météo temps réel & observations certifiées récentes
+    live_temp = None
+    live_rain = None
+    try:
+        live_weather = get_realtime_weather_open_meteo(parcel.latitude, parcel.longitude)
+        curr = live_weather.get("current", {})
+        if curr.get("temperature_c") is not None:
+            live_temp = float(curr["temperature_c"])
+    except Exception:
+        pass
+
     # Si pas d'observation directe, interpolation spatiale vers le point calibré le plus proche ayant des données
     if not obs_temp or not soil_profile:
         closest_parcel = (
@@ -205,7 +217,8 @@ def get_recommendation(parcel_id: str, db: Session) -> List[CropRecommendationIt
             if not soil_profile:
                 soil_profile = db.query(SoilProfile).filter(SoilProfile.parcel_id == closest_parcel.id, SoilProfile.depth_cm.in_(["0-5", "0-5cm"])).first()
 
-    mean_temp = obs_temp.value if obs_temp else (26.5 if country_code == "MDG" else 10.5)
+    # Priorité aux observations directes et données récentes
+    mean_temp = obs_temp.value if obs_temp else (live_temp if live_temp is not None else (26.5 if country_code == "MDG" else 10.5))
     annual_rain = obs_rain.value if obs_rain else (1350.0 if country_code == "MDG" else 845.0)
     ph = soil_profile.ph if soil_profile and soil_profile.ph else (5.8 if country_code == "MDG" else 6.6)
     clay = soil_profile.clay if soil_profile and soil_profile.clay else (48.0 if country_code == "MDG" else 24.0)

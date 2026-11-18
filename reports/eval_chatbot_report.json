@@ -1,9 +1,9 @@
 {
   "total_questions": 30,
-  "tool_call_accuracy": 100.0,
+  "tool_call_accuracy": 96.7,
   "guardrail_refusal_accuracy": 100.0,
   "grounding_score": 100.0,
-  "overall_pass_rate": 100.0,
+  "overall_pass_rate": 96.7,
   "target_met": true,
   "details": [
     {
@@ -186,11 +186,13 @@
       "id": "ctx_01",
       "category": "greeting",
       "question": "Bonjour, comment pouvez-vous m'aider aujourd'hui ?",
-      "called_tools": [],
-      "tool_ok": true,
+      "called_tools": [
+        "get_parcel_diagnosis"
+      ],
+      "tool_ok": false,
       "refusal_ok": true,
       "grounding_ok": true,
-      "passed": true
+      "passed": false
     },
     {
       "id": "ctx_02",

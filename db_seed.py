@@ -44,7 +44,7 @@ def seed_database(dry_run: bool = False):
         if os.path.exists(ecocrop_path):
             df_plants = pd.read_csv(ecocrop_path)
             for _, row in df_plants.iterrows():
-                plant = db.query(Plant).filter(Plant.scientific_name == row["scientific_name"]).first()
+                plant = db.query(Plant).filter(Plant.name_fr == row["name_fr"]).first()
                 if not plant:
                     plant = Plant(
                         name_fr=row["name_fr"],
