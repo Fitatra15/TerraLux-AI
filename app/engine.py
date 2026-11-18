@@ -16,6 +16,7 @@ from app.models import (
 from app.schemas import CropRecommendationItem, RecommendationReason
 from app.config import settings
 from app.realtime_weather import get_realtime_weather_open_meteo
+from app.economics import get_crop_economic_data, EUR_TO_MGA
 
 def calculate_climate_score(plant: Plant, mean_temp: float, annual_rain: float) -> tuple[float, list[str], list[str]]:
     """
@@ -299,10 +300,46 @@ def get_recommendation(parcel_id: str, db: Session) -> List[CropRecommendationIt
                         f"Région Gutland (Bon Pays) : climat tempéré ({mean_temp:.1f}°C) et sols marno-calcaires profonds (pH {ph:.1f}) idéaux pour {plant.name_fr}"
                     )
 
+        # 4. Modulateur technico-économique & Risque Marché / Inflation 2025-2026
+        area_ha = float(parcel.area_ha or 1.0)
+        eco = get_crop_economic_data(plant, country_code)
+        yield_t_ha = eco["yield_t_ha"]
+        total_prod_t = round(yield_t_ha * area_ha, 2)
+        price_t = eco["price_eur_t"]
+        input_cost_ha = eco["input_cost_eur_ha"]
+
+        gross_rev_eur = round(total_prod_t * price_t, 2)
+        input_cost_total_eur = round(input_cost_ha * area_ha, 2)
+        net_margin_eur = round(gross_rev_eur - input_cost_total_eur, 2)
+        gross_rev_mga = round(gross_rev_eur * EUR_TO_MGA, 0) if country_code == "MDG" else None
+
+        # score_rentabilite = (revenu_brut - coût_intrants) / surface (€/ha)
+        score_rentabilite = net_margin_eur / max(0.1, area_ha)
+
+        eco_positives = []
+        eco_negatives = []
+
+        # Si score_rentabilité négatif : pénalité modérée
+        if score_rentabilite <= 0:
+            priority_multiplier *= 0.95
+            eco_negatives.append(f"Rentabilité négative ({score_rentabilite:.0f} €/ha) : coûts d'intrants supérieurs au revenu estimé")
+        elif score_rentabilite >= 900.0:
+            priority_multiplier *= 1.02
+            eco_positives.append(f"Marge économique nette élevée estimée : {score_rentabilite:.0f} €/ha")
+
+        # Modulation selon le risque marché (pénalité ou bonus mesuré pour préserver l'adéquation agronomique)
+        if eco["risk_level"] == "Élevé":
+            priority_multiplier *= 0.98
+            eco_negatives.append(f"Risque marché Élevé : {eco['justification']}")
+        elif eco["risk_level"] == "Faible":
+            if plant.name_fr in ["Colza d'hiver", "Manioc", "Cacaoyer", "Pomme de terre"]:
+                priority_multiplier *= 1.03
+            eco_positives.append(f"Risque marché Faible : {eco['justification']}")
+
         final_score = min(100.0, round(base_score * priority_multiplier, 1))
 
-        all_positives = clim_pos + soil_pos + geo_positives
-        all_negatives = clim_neg + soil_neg + geo_negatives
+        all_positives = clim_pos + soil_pos + geo_positives + eco_positives
+        all_negatives = clim_neg + soil_neg + geo_negatives + eco_negatives
         if not all_negatives:
             all_negatives.append("Aucune contrainte agronomique majeure identifiée")
         if not all_positives:
@@ -319,7 +356,16 @@ def get_recommendation(parcel_id: str, db: Session) -> List[CropRecommendationIt
             name=plant.name_fr,
             scientific_name=plant.scientific_name,
             score=final_score,
-            reasons=reasons
+            reasons=reasons,
+            yield_t_ha=yield_t_ha,
+            expected_yield_t=total_prod_t,
+            price_eur_t=price_t,
+            gross_revenue_eur=gross_rev_eur,
+            gross_revenue_mga=gross_rev_mga,
+            input_cost_eur=input_cost_total_eur,
+            net_margin_eur=net_margin_eur,
+            market_risk=eco["risk_level"],
+            market_risk_justification=eco["justification"]
         )
         scored_crops.append(item)
 

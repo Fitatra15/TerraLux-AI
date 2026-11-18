@@ -5,7 +5,8 @@ import L from 'leaflet';
 import {
   Sprout, Droplets, Thermometer, ShieldAlert, Award,
   ChevronDown, ChevronUp, Camera, RefreshCw, Calendar,
-  ArrowLeft, FileText, CheckCircle2, AlertTriangle, Layers
+  ArrowLeft, FileText, CheckCircle2, AlertTriangle, Layers,
+  TrendingUp, DollarSign, ShieldCheck, Scale, AlertCircle
 } from 'lucide-react';
 
 import { cachedGet, apiClient } from '../api/client';
@@ -28,6 +29,7 @@ export default function ParcelDetail() {
 
   const [parcel, setParcel] = useState(null);
   const [recommendations, setRecommendations] = useState(null);
+  const [economics, setEconomics] = useState(null);
   const [soil, setSoil] = useState(null);
   const [events, setEvents] = useState([]);
   const [diseases, setDiseases] = useState([]);
@@ -63,15 +65,23 @@ export default function ParcelDetail() {
       const recData = await cachedGet(`/parcels/${id}/recommendation`);
       setRecommendations(recData.top3);
 
-      // 3. Soil Profile
+      // 3. Economics & Market Risk
+      try {
+        const ecoData = await cachedGet(`/parcels/${id}/economics`);
+        setEconomics(ecoData);
+      } catch (e) {
+        console.warn("Economics non disponible", e);
+      }
+
+      // 4. Soil Profile
       const soilData = await cachedGet(`/parcels/${id}/soil`);
       setSoil(soilData);
 
-      // 4. Events
+      // 5. Events
       const eventData = await cachedGet(`/parcels/${id}/events`);
       setEvents(Array.isArray(eventData) ? eventData : []);
 
-      // 5. Diseases
+      // 6. Diseases
       const disData = await cachedGet(`/parcels/${id}/diseases`);
       setDiseases(Array.isArray(disData) ? disData : []);
 
@@ -247,6 +257,97 @@ export default function ParcelDetail() {
             </div>
           )}
 
+          {/* 1.5. Bloc Estimation Économique & Risque Marché (Prompt : Rendement, Revenu & Inflation) */}
+          {economics && economics.crops_economics && economics.crops_economics.length > 0 && (
+            <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-forest flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-accent" />
+                    <span>Estimation Économique & Risque Marché</span>
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Modèle technico-économique 2025-2026 : Rendement (t), Revenu brut (€), Marge & Volatilité des intrants
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-3 py-1 bg-sand/60 text-forest rounded-xl border border-sand-dark/20">
+                    Surface : {economics.area_ha} ha
+                  </span>
+                </div>
+              </div>
+
+              {/* Contexte Macro-économique & Inflation */}
+              {economics.inflation_context && (
+                <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900 leading-relaxed">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Contexte macro-économique :</strong> {economics.inflation_context}
+                  </div>
+                </div>
+              )}
+
+              {/* Cards par culture */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {economics.crops_economics.slice(0, 3).map((item, idx) => {
+                  const isHighRisk = item.market_risk === "Élevé";
+                  const isLowRisk = item.market_risk === "Faible";
+                  const badgeColor = isLowRisk
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                    : isHighRisk
+                    ? "bg-rose-100 text-rose-800 border-rose-300"
+                    : "bg-amber-100 text-amber-800 border-amber-300";
+
+                  return (
+                    <div key={idx} className="bg-gray-50/80 border border-gray-200 rounded-2xl p-4 flex flex-col justify-between space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-bold text-sm text-gray-900">{item.crop_name}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>
+                            Risque {item.market_risk}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-gray-400 block mb-2">{item.scientific_name}</span>
+                        
+                        <div className="space-y-1.5 text-xs text-gray-700">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Rendement attendu :</span>
+                            <span className="font-semibold text-gray-900">{item.yield_t_ha} t/ha ({item.expected_yield_t} t)</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Revenu brut estimé :</span>
+                            <span className="font-bold text-forest">
+                              {economics.currency === "EUR" ? `${item.gross_revenue_eur.toLocaleString()} €` : `${item.gross_revenue_mga?.toLocaleString()} Ar`}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Coûts intrants :</span>
+                            <span className="font-medium text-gray-600">{item.input_cost_total_eur.toLocaleString()} €</span>
+                          </div>
+                          <div className="flex justify-between border-t border-gray-200/80 pt-1">
+                            <span className="font-medium text-gray-700">Marge nette estimée :</span>
+                            <span className={`font-bold ${item.net_margin_eur >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              {item.net_margin_eur.toLocaleString()} €
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-200/60 text-[11px] text-gray-600 leading-snug">
+                        💡 {item.market_risk_justification}
+                        {item.safer_alternative && (
+                          <div className="mt-1 text-emerald-800 font-medium">
+                            ➔ Alternative plus sûre : {item.safer_alternative}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* 2. Bloc Top 3 cultures & Explicabilité radicale (Prompt 3) */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -283,6 +384,17 @@ export default function ParcelDetail() {
                           )}
                         </div>
                         <p className="text-xs text-gray-500 italic">{crop.scientific_name}</p>
+                        {crop.expected_yield_t && (
+                          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-600 font-mono flex-wrap">
+                            <span>🌾 {crop.yield_t_ha} t/ha ({crop.expected_yield_t} t)</span>
+                            <span>•</span>
+                            <span className="font-semibold text-forest">💰 {crop.gross_revenue_eur?.toLocaleString()} €</span>
+                            <span>•</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${crop.market_risk === 'Faible' ? 'bg-emerald-100 text-emerald-800' : (crop.market_risk === 'Élevé' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}`}>
+                              Risque {crop.market_risk}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

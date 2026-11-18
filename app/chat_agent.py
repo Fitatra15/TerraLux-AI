@@ -64,19 +64,24 @@ else:
 # 2. PROMPT SYSTÈME OFFICIEL
 # =============================================================================
 SYSTEM_PROMPT = (
-    "Tu es l'assistant agronomique de TerraLux AI. Tu discutes avec un agriculteur ou un décideur. "
-    "Ton but est de l'aider à comprendre sa parcelle, son sol, sa météo et ses cultures.\n\n"
+    "Tu es un assistant agronomique et économique de TerraLux AI. Tu discutes avec un agriculteur ou un décideur. "
+    "Ton but est de l'aider à comprendre sa parcelle, son sol, sa météo, ses cultures et la rentabilité de son exploitation.\n\n"
     "RÈGLES DE COMPORTEMENT :\n"
     "- Tu es naturel, chaleureux et pédagogue. Tu ne réponds pas comme un robot.\n"
+    "- Quand tu recommandes une culture, tu dois TOUJOURS préciser : "
+    "(1) le rendement attendu en t/ha pour la surface de l'utilisateur, "
+    "(2) le revenu brut estimé en euros ou en ariary, "
+    "(3) le niveau de risque (faible/moyen/élevé) lié à la volatilité des prix et aux coûts des intrants. "
+    "Si le risque est élevé, propose une alternative plus sûre. Cite tes sources (données 2025-2026 du Luxembourg ou de Madagascar).\n"
     "- Si l'utilisateur mentionne le nom d'une parcelle ou d'une ville (ex: 'Antsiranana', 'Luxembourg-ville', 'Esch-sur-Alzette', 'Nosy Be'), "
     "tu dois D'ABORD appeler l'outil search_parcel_by_name pour trouver le bon parcel_id. Ensuite, utilise ce parcel_id pour appeler "
-    "les autres outils (get_parcel_diagnosis, get_crop_recommendation, get_weather_forecast, get_soil_richness). Ne devine jamais la parcelle.\n"
+    "les autres outils (calculate_expected_yield, assess_market_risk, get_parcel_diagnosis, get_crop_recommendation, get_weather_forecast, get_soil_richness). Ne devine jamais la parcelle.\n"
     "- Tu connais parfaitement la géographie administrative du Luxembourg. Si un utilisateur mentionne une localité (ex: 'Eselborn'), "
     "tu dois savoir qu'elle se trouve dans la commune de Clervaux (Canton de Clervaux, Région de l'Oesling). Utilise ces informations pour "
-    "contextualiser tes réponses agronomiques. Par exemple, si la parcelle est en Oesling, privilégie les cultures adaptées au climat plus frais "
+    "contextualiser tes réponses agronomiques et économiques. Par exemple, si la parcelle est en Oesling, privilégie les cultures adaptées au climat plus frais "
     "et aux sols schisteux. Distingue rigoureusement selon le contexte : 'Luxembourg-ville' (la capitale, Gutland), 'Canton de Luxembourg' "
     "(le canton administratif), et 'Luxembourg' (le pays dans son ensemble).\n"
-    "- Comprends l'intention derrière la question de l'utilisateur. S'il pose une question sur sa récolte, son sol, "
+    "- Comprends l'intention derrière la question de l'utilisateur. S'il pose une question sur sa récolte, ses gains, son rendement, son sol, "
     "ou la météo, tu dois utiliser les outils (Function Calling) pour aller chercher les vraies données.\n"
     "- Si la question est générale (ex: 'C'est quoi le maïs ?', 'Comment vas-tu ?'), tu peux répondre avec tes connaissances "
     "générales sans appeler d'outil.\n"
@@ -232,6 +237,34 @@ TOOLS = [
                     "parcel_id": {"type": "string", "description": "Identifiant de la parcelle"}
                 },
                 "required": ["parcel_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_expected_yield",
+            "description": "Calcule le rendement attendu (t/ha et total t), le revenu brut estimé (€ ou Ariary) et la marge nette pour la surface de la parcelle de l'agriculteur.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "parcel_id": {"type": "string", "description": "Identifiant de la parcelle."}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "assess_market_risk",
+            "description": "Évalue le risque de marché (Faible/Moyen/Élevé) d'une culture face à l'inflation des intrants et la volatilité des cours (engrais +35% au Luxembourg, riz -25% et cyclones à Madagascar).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "parcel_id": {"type": "string", "description": "Identifiant de la parcelle."},
+                    "crop_name": {"type": "string", "description": "Nom de la culture (ex: 'Blé d'hiver', 'Colza d'hiver', 'Riz pluvial', 'Manioc', 'Pomme de terre')."}
+                },
+                "required": ["crop_name"]
             }
         }
     }
@@ -620,6 +653,17 @@ def execute_backend_function(name: str, args: Dict[str, Any], db: Session) -> Di
             return contextualize_diagnosis(leaf_res, parcel.id, db)
         return leaf_res
 
+    # 10. calculate_expected_yield (Rendement, Production, Revenu Brut & Marge Nette)
+    elif name == "calculate_expected_yield":
+        from app.economics import calculate_expected_yield as calc_yield
+        return calc_yield(parcel.id, db)
+
+    # 11. assess_market_risk (Risque Marché, Inflation Intrants & Alternatives)
+    elif name == "assess_market_risk":
+        from app.economics import assess_market_risk as assess_risk
+        crop_n = args.get("crop_name") or args.get("crop") or "Blé d'hiver"
+        return assess_risk(parcel.id, crop_n, db)
+
     return {"error": f"Outil '{name}' inconnu."}
 
 
@@ -740,6 +784,66 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
             f"Carences identifiées : {', '.join(res.get('deficiencies', [])) or 'Aucune'}. Source : SoilGrids."
         )
 
+    elif name == "calculate_expected_yield":
+        area = res.get("area_ha", 1.0)
+        p_name = res.get("parcel_name", "votre parcelle")
+        items = res.get("crops_economics", [])
+        if not items:
+            return f"Pour {p_name} ({area} ha), estimations économiques en cours de calcul."
+
+        # Scénario spécifique Luxembourg (Blé vs Colza et hausse engrais +35%)
+        if res.get("country") == "LUX":
+            ble_item = next((it for it in items if "blé" in it["crop_name"].lower()), None)
+            colza_item = next((it for it in items if "colza" in it["crop_name"].lower()), None)
+            if ble_item and colza_item:
+                ble_rev = f"{ble_item['gross_revenue_eur']:,.0f} €"
+                colza_rev = f"{colza_item['gross_revenue_eur']:,.0f} €"
+                return (
+                    f"Avec {area} ha à {p_name}, le blé vous rapporterait environ {ble_rev} brut "
+                    f"({ble_item['yield_t_ha']} t/ha, total {ble_item['expected_yield_t']} t), "
+                    f"mais avec la hausse des engrais (+35%) et le rendement faible de 2026, le risque est élevé. "
+                    f"Le colza, avec un rendement de {colza_item['yield_t_ha']} t/ha ({colza_item['expected_yield_t']} t) "
+                    f"et un prix stable (~510 €/t, revenu brut {colza_rev}), est plus sûr cette saison. "
+                    f"Sources : Données 2025-2026 du Luxembourg (Statec / ASTA & FAO ECOCROP)."
+                )
+
+        # Scénario spécifique Madagascar (Riz -25% et risque cyclone vs Manioc / Cacao)
+        if res.get("country") == "MDG":
+            riz_item = next((it for it in items if "riz" in it["crop_name"].lower()), None)
+            manioc_item = next((it for it in items if "manioc" in it["crop_name"].lower()), None)
+            cacao_item = next((it for it in items if "cacao" in it["crop_name"].lower()), None)
+            alt = cacao_item or manioc_item
+            if riz_item and alt:
+                riz_rev = f"{riz_item['gross_revenue_eur']:,.0f} € ({riz_item['gross_revenue_mga']:,.0f} Ar)"
+                alt_rev = f"{alt['gross_revenue_eur']:,.0f} € ({alt['gross_revenue_mga']:,.0f} Ar)"
+                return (
+                    f"Avec {area} ha à {p_name}, le riz pluvial produirait environ {riz_item['expected_yield_t']} t ({riz_item['yield_t_ha']} t/ha) "
+                    f"pour un revenu brut de {riz_rev}, mais avec la baisse du prix du riz (-25%) et le risque cyclonique présent de novembre à avril, "
+                    f"le risque est élevé. L'alternative plus sûre est {alt['crop_name']} (rendement {alt['yield_t_ha']} t/ha, revenu estimé {alt_rev}). "
+                    f"Sources : Données 2025-2026 de Madagascar (INSTAT / DRAE Diana)."
+                )
+
+        top_it = items[0]
+        rev_txt = f"{top_it['gross_revenue_eur']:,.0f} €" if res.get("currency") == "EUR" else f"{top_it['gross_revenue_mga']:,.0f} Ar"
+        return (
+            f"Pour {p_name} ({area} ha) : (1) Rendement attendu : {top_it['yield_t_ha']} t/ha (total {top_it['expected_yield_t']} t). "
+            f"(2) Revenu brut estimé : {rev_txt} pour {top_it['crop_name']}. "
+            f"(3) Niveau de risque : {top_it['market_risk']} ({top_it['market_risk_justification']}). "
+            f"Sources : Données économiques agricoles 2025-2026."
+        )
+
+    elif name == "assess_market_risk":
+        crop_n = res.get("crop_name", "cette culture")
+        risk_lvl = res.get("risk_level", "Moyen")
+        justif = res.get("market_justification", "")
+        alt = res.get("safer_alternative")
+        alt_txt = f" Alternative plus sûre recommandée : {alt}." if alt else ""
+        return (
+            f"Évaluation du risque de marché pour {crop_n} sur '{res.get('parcel_name')}' : "
+            f"Niveau de risque : {risk_lvl}. Analyse : {justif}.{alt_txt} "
+            f"Sources : {', '.join(res.get('sources', ['Données 2025-2026']))}."
+        )
+
     elif name == "diagnose_leaf_image":
         return (
             f"Veuillez transmettre une photo foliaire claire dans le module 'Diagnostiquer'. "
@@ -843,6 +947,15 @@ def run_chat_agent(
     tool_calls_executed = []
     response_text = ""
 
+    # Détection de surface personnalisée spécifiée dans le message (ex: "J'ai 3 hectares", "3,5 ha", "10 ha")
+    area_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:ha\b|hectare|hectares)", message, re.IGNORECASE)
+    custom_area_override = None
+    if area_match:
+        try:
+            custom_area_override = float(area_match.group(1).replace(",", "."))
+        except Exception:
+            custom_area_override = None
+
     # Détection dynamique de parcelle si l'utilisateur mentionne une ville ou un nom dans son message
     searched = search_parcel_by_name(message, db)
     if searched.get("found"):
@@ -857,6 +970,13 @@ def run_chat_agent(
     elif not effective_parcel_id:
         p_first = db.query(Parcel).first()
         effective_parcel_id = p_first.id if p_first else None
+
+    # Mise à jour de la surface si spécifiée par l'utilisateur
+    if custom_area_override and effective_parcel_id:
+        p_curr = db.query(Parcel).filter(Parcel.id == effective_parcel_id).first()
+        if p_curr:
+            p_curr.area_ha = custom_area_override
+            db.commit()
 
     # Mémoire conversationnelle : les 5 derniers échanges (10 messages)
     history_records = (
@@ -1077,14 +1197,28 @@ def run_chat_agent(
             selected_tool = "get_parcel_diagnosis"
             tool_args = {"parcel_id": effective_parcel_id}
 
-            if any(k in msg_lower for k in ["ph", "sol", "sols", "fertilit", "carbone", "azote", "richesse", "carence", "wrb"]):
-                selected_tool = "get_soil_richness"
-            elif any(k in msg_lower for k in ["meteo", "météo", "pluie", "prevision", "prévision", "temperature", "température", "secheresse", "sécheresse", "climat"]):
+            if any(k in msg_lower for k in ["meteo", "météo", "pluie", "prevision", "prévision", "temperature", "température", "secheresse", "sécheresse", "climat"]):
                 selected_tool = "get_weather_forecast"
+            elif any(k in msg_lower for k in ["ph", "sol", "sols", "fertilit", "carbone", "azote", "richesse", "carence", "wrb"]):
+                selected_tool = "get_soil_richness"
             elif any(k in msg_lower for k in ["tache", "feuille", "feuilles", "jaune"]):
                 selected_tool = "diagnose_leaf_image"
             elif any(k in msg_lower for k in ["maladie", "pathogene", "pathogène", "mildiou", "pyriculariose", "septoriose"]):
                 selected_tool = "get_disease_risk"
+            elif any(k in msg_lower for k in [
+                "gagner de l'argent", "gagner", "combien d'argent", "revenu brut", "revenu estimé",
+                "rentabilit", "marge", "argent"
+            ]) or ("rendement" in msg_lower and any(w in msg_lower for w in ["attendu", "estimé", "surface", "ha", "hectare", "euro", "argent", "plante"])) or ("combien" in msg_lower and any(w in msg_lower for w in ["argent", "euro", "ariary", "gagner"])):
+                selected_tool = "calculate_expected_yield"
+            elif (("risque" in msg_lower and any(w in msg_lower for w in ["marché", "marche", "prix", "cout", "coût", "financier", "intrants", "inflation"])) or
+                  any(k in msg_lower for k in ["inflation", "volatilité", "volatilite", "hausse des coûts", "engrais"])):
+                selected_tool = "assess_market_risk"
+                crop_target = "Blé d'hiver"
+                for c in ["blé", "ble", "colza", "riz", "manioc", "cacao", "orge", "avoine", "pomme de terre"]:
+                    if c in msg_lower:
+                        crop_target = "Colza d'hiver" if "colza" in c else ("Blé d'hiver" if "blé" in c or "ble" in c else c.capitalize())
+                        break
+                tool_args["crop_name"] = crop_target
             elif any(k in msg_lower for k in ["fiche", "ecocrop", "exigence"]):
                 selected_tool = "get_crop_details"
                 crop_target = "Maïs"
@@ -1110,6 +1244,9 @@ def run_chat_agent(
             if selected_tool == "get_parcel_diagnosis":
                 tool_calls_executed.append({"tool": "get_parcel_diagnosis", **tool_args})
                 tool_calls_executed.append({"tool": "get_crop_recommendation", **tool_args})
+            elif selected_tool == "calculate_expected_yield":
+                tool_calls_executed.append({"tool": "calculate_expected_yield", **tool_args})
+                tool_calls_executed.append({"tool": "assess_market_risk", "parcel_id": effective_parcel_id, "crop_name": "Blé d'hiver" if "blé" in msg_lower else "Colza d'hiver"})
             else:
                 tool_calls_executed.append({"tool": selected_tool, **tool_args})
 

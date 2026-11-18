@@ -43,6 +43,8 @@ class Parcel(Base):
     region_natural = Column(String(100), nullable=True) # Oesling, Gutland, Diana
     canton = Column(String(100), nullable=True) # Canton Clervaux, Canton Esch-sur-Alzette, etc.
     area_ha = Column(Numeric(10, 2), nullable=True, default=1.0)
+    elevation_m = Column(Float, nullable=True, default=250.0) # Altitude en mètres
+    slope_pct = Column(Float, nullable=True, default=2.0) # Pente du terrain en %
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="parcels")
@@ -135,9 +137,16 @@ class Plant(Base):
     rain_max = Column(Float, nullable=True)
     ph_min = Column(Float, nullable=True)
     ph_max = Column(Float, nullable=True)
+    yield_t_ha = Column(Float, nullable=True, default=4.0) # Rendement moyen (t/ha)
+    price_eur_t = Column(Float, nullable=True, default=250.0) # Prix de vente (€/t)
+    input_cost_eur_ha = Column(Float, nullable=True, default=600.0) # Coût intrants (€/ha)
     source = Column(String(100), default="FAO ECOCROP")
 
     countries = relationship("PlantCountry", back_populates="plant", cascade="all, delete-orphan")
+
+
+# Alias pour compatibilité terminologique 'crops' / 'plants'
+Crop = Plant
 
 
 class PlantCountry(Base):

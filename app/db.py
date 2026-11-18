@@ -38,22 +38,41 @@ def init_db():
             pass
     Base.metadata.create_all(bind=engine)
 
-    # Safe column additions on existing parcels table
+    # Safe column additions on existing parcels and plants tables
     try:
         with engine.connect() as conn:
             from sqlalchemy import text
             if settings.DATABASE_URL.startswith("postgresql"):
                 conn.execute(text("ALTER TABLE parcels ADD COLUMN IF NOT EXISTS region_natural VARCHAR(100);"))
                 conn.execute(text("ALTER TABLE parcels ADD COLUMN IF NOT EXISTS canton VARCHAR(100);"))
+                conn.execute(text("ALTER TABLE parcels ADD COLUMN IF NOT EXISTS elevation_m FLOAT DEFAULT 250.0;"))
+                conn.execute(text("ALTER TABLE parcels ADD COLUMN IF NOT EXISTS slope_pct FLOAT DEFAULT 2.0;"))
+                conn.execute(text("ALTER TABLE plants ADD COLUMN IF NOT EXISTS yield_t_ha FLOAT DEFAULT 4.0;"))
+                conn.execute(text("ALTER TABLE plants ADD COLUMN IF NOT EXISTS price_eur_t FLOAT DEFAULT 250.0;"))
+                conn.execute(text("ALTER TABLE plants ADD COLUMN IF NOT EXISTS input_cost_eur_ha FLOAT DEFAULT 600.0;"))
                 conn.commit()
             else:
-                # SQLite PRAGMA check
-                res = conn.execute(text("PRAGMA table_info(parcels);")).fetchall()
-                col_names = [r[1] for r in res]
-                if "region_natural" not in col_names:
+                # SQLite PRAGMA check on parcels
+                res_p = conn.execute(text("PRAGMA table_info(parcels);")).fetchall()
+                col_names_p = [r[1] for r in res_p]
+                if "region_natural" not in col_names_p:
                     conn.execute(text("ALTER TABLE parcels ADD COLUMN region_natural VARCHAR(100);"))
-                if "canton" not in col_names:
+                if "canton" not in col_names_p:
                     conn.execute(text("ALTER TABLE parcels ADD COLUMN canton VARCHAR(100);"))
+                if "elevation_m" not in col_names_p:
+                    conn.execute(text("ALTER TABLE parcels ADD COLUMN elevation_m FLOAT DEFAULT 250.0;"))
+                if "slope_pct" not in col_names_p:
+                    conn.execute(text("ALTER TABLE parcels ADD COLUMN slope_pct FLOAT DEFAULT 2.0;"))
+
+                # SQLite PRAGMA check on plants
+                res_pl = conn.execute(text("PRAGMA table_info(plants);")).fetchall()
+                col_names_pl = [r[1] for r in res_pl]
+                if "yield_t_ha" not in col_names_pl:
+                    conn.execute(text("ALTER TABLE plants ADD COLUMN yield_t_ha FLOAT DEFAULT 4.0;"))
+                if "price_eur_t" not in col_names_pl:
+                    conn.execute(text("ALTER TABLE plants ADD COLUMN price_eur_t FLOAT DEFAULT 250.0;"))
+                if "input_cost_eur_ha" not in col_names_pl:
+                    conn.execute(text("ALTER TABLE plants ADD COLUMN input_cost_eur_ha FLOAT DEFAULT 600.0;"))
                 conn.commit()
     except Exception:
         pass

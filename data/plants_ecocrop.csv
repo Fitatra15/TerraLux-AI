@@ -1,19 +1,19 @@
-name_fr,name_en,scientific_name,family,type,temp_min,temp_max,rain_min,rain_max,ph_min,ph_max,countries
-Riz pluvial,Upland Rice,Oryza sativa,Poaceae,cereal,20.0,35.0,900.0,1600.0,5.0,6.8,MDG
-Manioc,Cassava,Manihot esculenta,Euphorbiaceae,tuber,20.0,38.0,600.0,2000.0,4.5,7.5,MDG
-Maïs tropical,Tropical Maize,Zea mays,Poaceae,cereal,18.0,34.0,700.0,1400.0,5.5,7.2,MDG
-Cacaoyer,Cocoa,Theobroma cacao,Malvaceae,tree,21.0,32.0,1200.0,2500.0,5.5,7.0,MDG
-Vanille,Vanilla,Vanilla planifolia,Orchidaceae,vine,21.0,30.0,1500.0,3000.0,6.0,7.5,MDG
-Caféier Robusta,Robusta Coffee,Coffea canephora,Rubiaceae,tree,22.0,32.0,1300.0,2500.0,5.0,6.5,MDG
-Patate douce,Sweet Potato,Ipomoea batatas,Convolvulaceae,tuber,20.0,32.0,750.0,1500.0,5.2,6.8,MDG
-Niébé (Cowpea),Cowpea,Vigna unguiculata,Fabaceae,legume,20.0,35.0,400.0,900.0,5.5,7.5,MDG
-Arachide,Groundnut / Peanut,Arachis hypogaea,Fabaceae,legume,22.0,32.0,500.0,1000.0,5.5,7.0,MDG
-Bananier plantain,Plantain Banana,Musa paradisiaca,Musaceae,fruit,22.0,35.0,1500.0,2800.0,5.5,7.0,MDG
-Blé d'hiver,Winter Wheat,Triticum aestivum,Poaceae,cereal,3.0,24.0,500.0,950.0,6.0,7.5,LUX
-Colza d'hiver,Winter Rapeseed,Brassica napus,Brassicaceae,oilseed,5.0,25.0,550.0,900.0,6.0,7.2,LUX
-Orge d'hiver,Winter Barley,Hordeum vulgare,Poaceae,cereal,4.0,25.0,450.0,850.0,6.0,7.5,LUX
-Maïs ensilage,Silage Maize,Zea mays,Poaceae,cereal,12.0,30.0,600.0,1100.0,5.8,7.2,LUX
-Pomme de terre,Potato,Solanum tuberosum,Solanaceae,tuber,10.0,24.0,500.0,850.0,5.2,6.5,LUX
-Trèfle blanc,White Clover,Trifolium repens,Fabaceae,legume,5.0,25.0,600.0,1200.0,5.8,7.0,LUX
-Féverole,Faba Bean,Vicia faba,Fabaceae,legume,6.0,24.0,500.0,900.0,6.0,7.5,LUX
-Avoine,Oats,Avena sativa,Poaceae,cereal,5.0,24.0,450.0,850.0,5.5,7.0,LUX
+name_fr,name_en,scientific_name,family,type,temp_min,temp_max,rain_min,rain_max,ph_min,ph_max,yield_t_ha,price_eur_t,input_cost_eur_ha,countries
+Riz pluvial,Upland Rice,Oryza sativa,Poaceae,cereal,20.0,35.0,900.0,1600.0,5.0,6.8,2.8,300.0,380.0,MDG
+Manioc,Cassava,Manihot esculenta,Euphorbiaceae,tuber,20.0,38.0,600.0,2000.0,4.5,7.5,18.0,85.0,240.0,MDG
+Maïs tropical,Tropical Maize,Zea mays,Poaceae,cereal,18.0,34.0,700.0,1400.0,5.5,7.2,2.8,240.0,280.0,MDG
+Cacaoyer,Cocoa,Theobroma cacao,Malvaceae,tree,21.0,32.0,1200.0,2500.0,5.5,7.0,1.0,4800.0,550.0,MDG
+Vanille,Vanilla,Vanilla planifolia,Orchidaceae,vine,21.0,30.0,1500.0,3000.0,6.0,7.5,0.3,9500.0,1200.0,MDG
+Caféier Robusta,Robusta Coffee,Coffea canephora,Rubiaceae,tree,22.0,32.0,1300.0,2500.0,5.0,6.5,1.1,2600.0,500.0,MDG
+Patate douce,Sweet Potato,Ipomoea batatas,Convolvulaceae,tuber,20.0,32.0,750.0,1500.0,5.2,6.8,13.0,140.0,220.0,MDG
+Niébé (Cowpea),Cowpea,Vigna unguiculata,Fabaceae,legume,20.0,35.0,400.0,900.0,5.5,7.5,1.4,450.0,180.0,MDG
+Arachide,Groundnut / Peanut,Arachis hypogaea,Fabaceae,legume,22.0,32.0,500.0,1000.0,5.5,7.0,1.8,680.0,320.0,MDG
+Bananier plantain,Plantain Banana,Musa paradisiaca,Musaceae,fruit,22.0,35.0,1500.0,2800.0,5.5,7.0,18.0,220.0,650.0,MDG
+Blé d'hiver,Winter Wheat,Triticum aestivum,Poaceae,cereal,3.0,24.0,500.0,950.0,6.0,7.5,5.8,255.0,980.0,LUX
+Colza d'hiver,Winter Rapeseed,Brassica napus,Brassicaceae,oilseed,5.0,25.0,550.0,900.0,6.0,7.2,3.9,510.0,780.0,LUX
+Orge d'hiver,Winter Barley,Hordeum vulgare,Poaceae,cereal,4.0,25.0,450.0,850.0,6.0,7.5,6.4,195.0,780.0,LUX
+Maïs ensilage,Silage Maize,Zea mays,Poaceae,cereal,12.0,30.0,600.0,1100.0,5.8,7.2,12.0,120.0,850.0,LUX
+Pomme de terre,Potato,Solanum tuberosum,Solanaceae,tuber,10.0,24.0,500.0,850.0,5.2,6.5,38.0,240.0,3400.0,LUX
+Trèfle blanc,White Clover,Trifolium repens,Fabaceae,legume,5.0,25.0,600.0,1200.0,5.8,7.0,5.0,150.0,300.0,LUX
+Féverole,Faba Bean,Vicia faba,Fabaceae,legume,6.0,24.0,500.0,900.0,6.0,7.5,3.5,280.0,400.0,LUX
+Avoine,Oats,Avena sativa,Poaceae,cereal,5.0,24.0,450.0,850.0,5.5,7.0,4.5,185.0,450.0,LUX

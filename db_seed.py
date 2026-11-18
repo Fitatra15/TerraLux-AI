@@ -49,6 +49,10 @@ def seed_database(dry_run: bool = False):
             df_plants = pd.read_csv(ecocrop_path)
             for _, row in df_plants.iterrows():
                 plant = db.query(Plant).filter(Plant.name_fr == row["name_fr"]).first()
+                yield_val = float(row.get("yield_t_ha", 4.0)) if pd.notnull(row.get("yield_t_ha")) else 4.0
+                price_val = float(row.get("price_eur_t", 250.0)) if pd.notnull(row.get("price_eur_t")) else 250.0
+                cost_val = float(row.get("input_cost_eur_ha", 600.0)) if pd.notnull(row.get("input_cost_eur_ha")) else 600.0
+
                 if not plant:
                     plant = Plant(
                         name_fr=row["name_fr"],
@@ -62,10 +66,18 @@ def seed_database(dry_run: bool = False):
                         rain_max=float(row["rain_max"]),
                         ph_min=float(row["ph_min"]),
                         ph_max=float(row["ph_max"]),
+                        yield_t_ha=yield_val,
+                        price_eur_t=price_val,
+                        input_cost_eur_ha=cost_val,
                         source="FAO ECOCROP"
                     )
                     db.add(plant)
                     db.flush()
+                else:
+                    plant.yield_t_ha = yield_val
+                    plant.price_eur_t = price_val
+                    plant.input_cost_eur_ha = cost_val
+                    db.add(plant)
 
                 # Liaison pays
                 country_code = row["countries"]
@@ -111,7 +123,9 @@ def seed_database(dry_run: bool = False):
                     region=info["region"],
                     region_natural=reg_nat,
                     canton=canton_val,
-                    area_ha=3.5 if info["country"] == "MDG" else 8.0
+                    area_ha=3.5 if ("esch" in info['name'].lower() or info['country'] == 'MDG') else 8.0,
+                    elevation_m=480.0 if reg_nat == "Oesling" else (290.0 if info['country'] == 'LUX' else 65.0),
+                    slope_pct=5.5 if reg_nat == "Oesling" else (2.0 if info['country'] == 'LUX' else 3.0)
                 )
                 db.add(parcel)
                 db.flush()
@@ -121,6 +135,10 @@ def seed_database(dry_run: bool = False):
                     parcel.name = parcel_name
                 parcel.region_natural = reg_nat
                 parcel.canton = canton_val
+                if "esch" in info['name'].lower():
+                    parcel.area_ha = 3.5
+                parcel.elevation_m = 480.0 if reg_nat == "Oesling" else (290.0 if info['country'] == 'LUX' else 65.0)
+                parcel.slope_pct = 5.5 if reg_nat == "Oesling" else (2.0 if info['country'] == 'LUX' else 3.0)
                 db.add(parcel)
                 db.flush()
 

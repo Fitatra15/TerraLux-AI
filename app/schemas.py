@@ -38,6 +38,8 @@ class ParcelCreate(BaseModel):
     latitude: float
     longitude: float
     area_ha: Optional[float] = 1.0
+    elevation_m: Optional[float] = 250.0
+    slope_pct: Optional[float] = 2.0
     canton: Optional[str] = None
     region_natural: Optional[str] = None
 
@@ -52,6 +54,8 @@ class ParcelOut(BaseModel):
     canton: Optional[str] = None
     region_natural: Optional[str] = None
     area_ha: Optional[float] = 1.0
+    elevation_m: Optional[float] = 250.0
+    slope_pct: Optional[float] = 2.0
     created_at: Optional[datetime] = None
     soil_type: Optional[str] = None
     score: Optional[float] = None
@@ -73,6 +77,42 @@ class CropRecommendationItem(BaseModel):
     scientific_name: Optional[str] = None
     score: float
     reasons: RecommendationReason
+    yield_t_ha: Optional[float] = None
+    expected_yield_t: Optional[float] = None
+    price_eur_t: Optional[float] = None
+    gross_revenue_eur: Optional[float] = None
+    gross_revenue_mga: Optional[float] = None
+    input_cost_eur: Optional[float] = None
+    net_margin_eur: Optional[float] = None
+    market_risk: Optional[str] = "Faible" # Faible, Moyen, Élevé
+    market_risk_justification: Optional[str] = None
+
+class CropEconomicItem(BaseModel):
+    crop_name: str
+    scientific_name: Optional[str] = None
+    area_ha: float
+    yield_t_ha: float
+    expected_yield_t: float
+    price_eur_t: float
+    gross_revenue_eur: float
+    gross_revenue_mga: Optional[float] = None
+    input_cost_eur_ha: float
+    input_cost_total_eur: float
+    net_margin_eur: float
+    profitability_score: float
+    market_risk: str
+    market_risk_justification: str
+
+class ParcelEconomicsResponse(BaseModel):
+    parcel_id: str
+    parcel_name: str
+    country: str
+    area_ha: float
+    elevation_m: Optional[float] = None
+    slope_pct: Optional[float] = None
+    currency: str
+    economic_items: List[CropEconomicItem]
+    inflation_context: str
 
 class RecommendationResponse(BaseModel):
     parcel_id: str

@@ -201,7 +201,9 @@ def create_parcel(
         region=region,
         region_natural=region_natural,
         canton=canton,
-        area_ha=parcel_in.area_ha or 1.0
+        area_ha=parcel_in.area_ha or 1.0,
+        elevation_m=parcel_in.elevation_m or 250.0,
+        slope_pct=parcel_in.slope_pct or 2.0
     )
     db.add(new_parcel)
     db.commit()
@@ -236,7 +238,11 @@ def _enrich_parcel_out(parcel: Parcel, db: Session) -> ParcelOut:
         longitude=parcel.longitude,
         country=parcel.country,
         region=parcel.region,
+        canton=getattr(parcel, "canton", None),
+        region_natural=getattr(parcel, "region_natural", None),
         area_ha=float(parcel.area_ha) if parcel.area_ha else 1.0,
+        elevation_m=float(getattr(parcel, "elevation_m", 250.0) or 250.0),
+        slope_pct=float(getattr(parcel, "slope_pct", 2.0) or 2.0),
         created_at=parcel.created_at,
         soil_type=soil_type,
         score=round(float(score), 1) if score is not None else 80.0,
@@ -343,6 +349,25 @@ def parcel_recommendations(id: str, db: Session = Depends(get_db)):
     target_id = parcel.id if parcel else (db.query(Parcel).filter(Parcel.country == "MDG").first().id if db.query(Parcel).filter(Parcel.country == "MDG").first() else id)
     top3 = get_recommendation(target_id, db)
     return RecommendationResponse(parcel_id=id, top3=top3, engine_version="rules-v1")
+
+@router.get("/parcels/{id}/economics", tags=["Agronomy", "Economics"])
+def parcel_economics(id: str, db: Session = Depends(get_db)):
+    """Calcule le rendement attendu (t/ha et total), revenu brut (€ ou Ar) et risque de marché."""
+    from app.economics import calculate_expected_yield
+    parcel = db.query(Parcel).filter(Parcel.id == id).first()
+    target_id = parcel.id if parcel else (db.query(Parcel).first().id if db.query(Parcel).first() else id)
+    res = calculate_expected_yield(target_id, db)
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+    return res
+
+@router.get("/parcels/{id}/market-risk", tags=["Agronomy", "Economics"])
+def parcel_market_risk(id: str, crop_name: str = "Blé d'hiver", db: Session = Depends(get_db)):
+    """Évalue le risque de marché d'une culture sur la parcelle."""
+    from app.economics import assess_market_risk
+    parcel = db.query(Parcel).filter(Parcel.id == id).first()
+    target_id = parcel.id if parcel else (db.query(Parcel).first().id if db.query(Parcel).first() else id)
+    return assess_market_risk(target_id, crop_name, db)
 
 @router.get("/parcels/{id}/report.pdf", tags=["Agronomy"])
 def parcel_pdf_report(id: str, db: Session = Depends(get_db)):
