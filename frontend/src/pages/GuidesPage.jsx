@@ -43,7 +43,7 @@ export default function GuidesPage() {
       title: t('guides.step4_title'),
       desc: t('guides.step4_desc'),
       icon: Award,
-      badge: "Certification Bancable",
+      badge: "Éligible au Passeport de Résilience",
       color: "text-emerald-300",
       cta: { text: t('actions.view_passport'), to: '/passport' }
     }

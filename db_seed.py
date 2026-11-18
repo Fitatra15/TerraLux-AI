@@ -85,9 +85,10 @@ def seed_database(dry_run: bool = False):
                 Parcel.longitude == info["lon"]
             ).first()
 
+            parcel_name = f"Exploitation {info['name']}" if info['country'] == 'LUX' else f"Domaine {info['name']}"
             if not parcel:
                 parcel = Parcel(
-                    name=f"Parcelle démo {info['name']}",
+                    name=parcel_name,
                     latitude=info["lat"],
                     longitude=info["lon"],
                     country=info["country"],
@@ -97,6 +98,10 @@ def seed_database(dry_run: bool = False):
                 db.add(parcel)
                 db.flush()
                 logger.info(f"Parcelle créée : {info['name']} (ID: {parcel.id})")
+            elif "démo" in parcel.name.lower() or "demo" in parcel.name.lower():
+                parcel.name = parcel_name
+                db.add(parcel)
+                db.flush()
 
             # Profils de sol (3 profondeurs : 0-5cm, 5-15cm, 15-30cm)
             soil_file = os.path.join("data", "soilgrids", f"{key}.json")

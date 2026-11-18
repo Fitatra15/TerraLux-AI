@@ -49,6 +49,9 @@ class ParcelOut(BaseModel):
     region: Optional[str] = None
     area_ha: Optional[float] = 1.0
     created_at: Optional[datetime] = None
+    soil_type: Optional[str] = None
+    score: Optional[float] = None
+    status: Optional[str] = "Ready"
 
 class ParcelPhotoOut(BaseModel):
     photo_id: str

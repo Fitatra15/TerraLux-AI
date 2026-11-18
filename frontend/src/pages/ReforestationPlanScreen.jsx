@@ -7,6 +7,7 @@ import {
   Leaf, Droplets, Wind, CheckCircle2, ArrowUpRight, Share2 
 } from 'lucide-react';
 import { cachedGet } from '../api/client';
+import { getNasaGibsTileUrl, NASA_GIBS_ATTRIBUTION } from '../utils/nasaGibs';
 
 const zoneMarkerIcon = new L.DivIcon({
   className: 'zone-pin',
@@ -81,7 +82,7 @@ export default function ReforestationPlanScreen() {
       canopyType: 'Tuteur vivant d’agroforesterie de haute rente',
       iconEmoji: '🪵',
       origin: 'Sava & Diana',
-      reason: 'Combine valorisation financière bancable (marché export vanille bourbon) et rempart physique robuste face aux cyclones saisonniers.'
+      reason: 'Combine valorisation financière éligible au Passeport de Résilience (marché export vanille bourbon) et rempart physique robuste face aux cyclones saisonniers.'
     }
   ];
 
@@ -148,8 +149,10 @@ export default function ReforestationPlanScreen() {
                 className="w-full h-full leaflet-dark"
               >
                 <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  attribution='&copy; CARTO &copy; TerraLux AI'
+                  attribution={NASA_GIBS_ATTRIBUTION}
+                  url={getNasaGibsTileUrl()}
+                  maxNativeZoom={9}
+                  maxZoom={18}
                 />
 
                 {/* Priority Zone 1 : High Erosion Risk (Red/Amber) */}

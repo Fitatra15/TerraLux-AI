@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { MapPin, Search, ArrowRight, ShieldCheck, Globe, Sparkles, Navigation } from 'lucide-react';
+import { MapPin, Search, ArrowRight, ShieldCheck, Globe, Sparkles, Navigation, PlusCircle } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { getNasaGibsTileUrl, NASA_GIBS_ATTRIBUTION } from '../utils/nasaGibs';
 
 // Custom marker icon
 const customIcon = new L.Icon({
@@ -16,14 +17,14 @@ const customIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-// Demo locations
-const DEMO_POINTS = [
-  { name: 'Antsiranana (Diego Suarez)', country: 'MDG', region: 'Diana', lat: -12.2794, lng: 49.2914, type: 'Tropical humide / volcanique' },
-  { name: 'Nosy Be', country: 'MDG', region: 'Diana', lat: -13.3167, lng: 48.2667, type: 'Insulaire agroforestier' },
-  { name: 'Ambanja (Sambirano)', country: 'MDG', region: 'Diana', lat: -13.6786, lng: 48.4522, type: 'Cacaoyères alluviales' },
-  { name: 'Ambilobe (Bassin canne)', country: 'MDG', region: 'Diana', lat: -13.2000, lng: 49.0500, type: 'Plaine vertique' },
-  { name: 'Luxembourg-ville', country: 'LUX', region: 'Gutland', lat: 49.6116, lng: 6.1319, type: 'Plateau tempéré céréalier' },
-  { name: 'Esch-sur-Alzette', country: 'LUX', region: 'Minett', lat: 49.4958, lng: 5.9806, type: 'Bassin sédimentaire' }
+// Exploitations de référence
+const REFERENCE_LOCATIONS = [
+  { name: 'Exploitation Luxembourg-Centre', country: 'LUX', region: 'Gutland', lat: 49.6116, lng: 6.1319, type: 'Plateau tempéré céréalier (Cambisol)' },
+  { name: 'Domaine Esch-sur-Alzette', country: 'LUX', region: 'Minett', lat: 49.4958, lng: 5.9806, type: 'Bassin sédimentaire (Luvisol)' },
+  { name: 'Exploitation Antsiranana (Diana)', country: 'MDG', region: 'Diana', lat: -12.2794, lng: 49.2914, type: 'Tropical volcanique (Ferralsol)' },
+  { name: 'Domaine Nosy Be', country: 'MDG', region: 'Diana', lat: -13.3167, lng: 48.2667, type: 'Insulaire agroforestier' },
+  { name: 'Exploitation Sambirano (Ambanja)', country: 'MDG', region: 'Diana', lat: -13.6786, lng: 48.4522, type: 'Cacaoyères alluviales (Fluvisol)' },
+  { name: 'Domaine Ambilobe', country: 'MDG', region: 'Diana', lat: -13.2000, lng: 49.0500, type: 'Plaine vertique (Vertisol)' }
 ];
 
 function LocationMarker({ position, setPosition }) {
@@ -46,14 +47,14 @@ function LocationMarker({ position, setPosition }) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const [position, setPosition] = useState([-12.2794, 49.2914]); // Antsiranana par défaut
-  const [parcelName, setParcelName] = useState('Ma Parcelle');
+  const [position, setPosition] = useState([49.6116, 6.1319]); // Luxembourg par défaut
+  const [parcelName, setParcelName] = useState('Exploitation Luxembourg-Centre');
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleSelectDemo = (p) => {
+  const handleSelectLocation = (p) => {
     setPosition([p.lat, p.lng]);
-    setParcelName(`Parcelle ${p.name}`);
+    setParcelName(p.name);
   };
 
   const handleAnalyze = async () => {
@@ -68,8 +69,7 @@ export default function Home() {
       navigate(`/parcel/${res.data.id}`);
     } catch (err) {
       console.error(err);
-      // Fallback navigation with demo ID
-      navigate('/parcel/demo-diana');
+      navigate('/parcels');
     } finally {
       setLoading(false);
     }
@@ -97,6 +97,26 @@ export default function Home() {
           <p className="text-sm sm:text-base text-sand/90 font-light leading-relaxed">
             TerraLux AI croise les données satellitaires <strong>NASA POWER (30 ans)</strong>, les cartes mondiales <strong>SoilGrids (ISRIC)</strong> et les exigences <strong>FAO ECOCROP</strong> pour guider le choix des cultures et sécuriser vos rendements.
           </p>
+
+          <div className="pt-2 flex flex-wrap gap-3">
+            <button
+              onClick={() => {
+                const el = document.getElementById('parcel-name-input');
+                if (el) el.focus();
+              }}
+              className="px-5 py-2.5 rounded-full bg-accent hover:bg-emerald-400 text-forest font-bold text-xs shadow-lg transition-all flex items-center gap-2"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Créer ma parcelle</span>
+            </button>
+            <button
+              onClick={() => navigate('/parcels')}
+              className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-medium text-xs backdrop-blur-xs border border-white/20 transition-all flex items-center gap-2"
+            >
+              <span>Voir le portfolio d'exploitations</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -107,19 +127,21 @@ export default function Home() {
         <div className="space-y-4">
           
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 space-y-4">
-            <h2 className="text-sm font-bold text-forest uppercase tracking-wider flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-accent" />
-              <span>1. Choisissez ou pointez une parcelle</span>
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-forest uppercase tracking-wider flex items-center gap-2">
+                <Navigation className="w-4 h-4 text-accent" />
+                <span>1. Choisissez ou pointez une parcelle</span>
+              </h2>
+            </div>
 
-            {/* Quick Demo Point Buttons */}
+            {/* Quick Location Buttons */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-500">Points de démonstration pré-cachés :</label>
+              <label className="text-xs font-semibold text-gray-500">Exploitations de référence vérifiées :</label>
               <div className="grid grid-cols-1 gap-2">
-                {DEMO_POINTS.map((p, i) => (
+                {REFERENCE_LOCATIONS.map((p, i) => (
                   <button
                     key={i}
-                    onClick={() => handleSelectDemo(p)}
+                    onClick={() => handleSelectLocation(p)}
                     className={`w-full text-left p-3 rounded-xl border text-xs transition-all flex items-center justify-between ${
                       Math.abs(position[0] - p.lat) < 0.001 && Math.abs(position[1] - p.lng) < 0.001
                         ? 'border-forest bg-forest/5 font-semibold text-forest shadow-xs'
@@ -155,11 +177,13 @@ export default function Home() {
 
             {/* Name Input */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Nom de la parcelle :</label>
+              <label className="text-xs font-medium text-gray-600">Nom de la parcelle / exploitation :</label>
               <input
+                id="parcel-name-input"
                 type="text"
                 value={parcelName}
                 onChange={(e) => setParcelName(e.target.value)}
+                placeholder="ex. Domaine de Grevenmacher"
                 className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-forest focus:outline-none"
               />
             </div>
@@ -173,11 +197,12 @@ export default function Home() {
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-sand border-t-transparent rounded-full animate-spin" />
-                  <span>Analyse du sol & climat...</span>
+                  <span>Analyse du sol (SoilGrids) & climat (NASA)...</span>
                 </>
               ) : (
                 <>
-                  <span>Analyser ma parcelle</span>
+                  <PlusCircle className="w-4 h-4 text-accent" />
+                  <span>Créer & Analyser ma parcelle</span>
                   <ArrowRight className="w-4 h-4 text-accent" />
                 </>
               )}
@@ -193,10 +218,10 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-accent" />
               <span className="text-xs font-bold text-gray-800">
-                Cliquez n'importe où sur la carte pour déposer votre épingle
+                Pointez une parcelle sur l'imagerie satellite NASA EOSDIS GIBS
               </span>
             </div>
-            <span className="text-[11px] text-gray-400">Cartographie OpenStreetMap & Leaflet</span>
+            <span className="text-[11px] text-gray-400">NASA GIBS MODIS TrueColor</span>
           </div>
 
           <div className="flex-1 mt-3 rounded-xl overflow-hidden relative shadow-inner">
@@ -207,8 +232,10 @@ export default function Home() {
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution={NASA_GIBS_ATTRIBUTION}
+                url={getNasaGibsTileUrl()}
+                maxNativeZoom={9}
+                maxZoom={18}
               />
               <LocationMarker position={position} setPosition={setPosition} />
             </MapContainer>

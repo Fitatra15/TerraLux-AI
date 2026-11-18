@@ -112,7 +112,7 @@ export default function ResiliencePassportScreen() {
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Innovation I1 • Actif Financier & Certificat Bancable</span>
+                <span>Innovation I1 • Actif Financier & Éligible au Passeport de Résilience</span>
               </div>
               <h1 className="text-3xl sm:text-5xl font-serif text-white tracking-tight">
                 Passeport de Résilience Certifié
@@ -172,7 +172,7 @@ export default function ResiliencePassportScreen() {
                   <span className="text-[9px] font-mono uppercase font-bold tracking-tight">Tier 1 Asset</span>
                 </div>
                 <span className="text-[10px] font-mono text-emerald-400/90 mt-1.5 font-bold">
-                  Bancable LFF & Spuerkeess
+                  Éligible au Passeport de Résilience
                 </span>
               </div>
             </div>

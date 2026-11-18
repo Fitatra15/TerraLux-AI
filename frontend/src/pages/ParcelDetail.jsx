@@ -11,6 +11,7 @@ import {
 import { cachedGet, apiClient } from '../api/client';
 import ChatWidget from '../components/ChatWidget';
 import LeafDiagnoseModal from '../components/LeafDiagnoseModal';
+import { getNasaGibsTileUrl, NASA_GIBS_ATTRIBUTION } from '../utils/nasaGibs';
 
 const customIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -363,7 +364,12 @@ export default function ParcelDetail() {
                 scrollWheelZoom={false}
                 style={{ height: '100%', width: '100%' }}
               >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <TileLayer
+                  attribution={NASA_GIBS_ATTRIBUTION}
+                  url={getNasaGibsTileUrl()}
+                  maxNativeZoom={9}
+                  maxZoom={18}
+                />
                 <Marker position={[lat, lng]} icon={customIcon}>
                   <Popup>{parcel?.name}</Popup>
                 </Marker>
