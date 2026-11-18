@@ -10,6 +10,7 @@ Architecture souveraine et temps réel :
 6. Guardrails de sécurité (zéro posologie pesticide chimique, aucun conseil médical)
 """
 import os
+import re
 import json
 import logging
 import hashlib
@@ -67,6 +68,9 @@ SYSTEM_PROMPT = (
     "Ton but est de l'aider à comprendre sa parcelle, son sol, sa météo et ses cultures.\n\n"
     "RÈGLES DE COMPORTEMENT :\n"
     "- Tu es naturel, chaleureux et pédagogue. Tu ne réponds pas comme un robot.\n"
+    "- Si l'utilisateur mentionne le nom d'une parcelle ou d'une ville (ex: 'Antsiranana', 'Luxembourg-ville', 'Esch-sur-Alzette', 'Nosy Be'), "
+    "tu dois D'ABORD appeler l'outil search_parcel_by_name pour trouver le bon parcel_id. Ensuite, utilise ce parcel_id pour appeler "
+    "les autres outils (get_parcel_diagnosis, get_crop_recommendation, get_weather_forecast, get_soil_richness). Ne devine jamais la parcelle.\n"
     "- Comprends l'intention derrière la question de l'utilisateur. S'il pose une question sur sa récolte, son sol, "
     "ou la météo, tu dois utiliser les outils (Function Calling) pour aller chercher les vraies données.\n"
     "- Si la question est générale (ex: 'C'est quoi le maïs ?', 'Comment vas-tu ?'), tu peux répondre avec tes connaissances "
@@ -86,6 +90,20 @@ SYSTEM_PROMPT = (
 # 3. DÉFINITION DES OUTILS (FUNCTION CALLING AU FORMAT OPENAI / QWEN)
 # =============================================================================
 TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_parcel_by_name",
+            "description": "Recherche une parcelle dans la base PostGIS par son nom, sa ville ou sa région (ex: 'Antsiranana', 'Diego', 'Luxembourg-ville', 'Esch-sur-Alzette', 'Nosy Be', 'Ambanja', 'Kirchberg'). Renvoie l'identifiant parcel_id exact.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Nom de la parcelle, ville ou région mentionnée par l'utilisateur"}
+                },
+                "required": ["name"]
+            }
+        }
+    },
     {
         "type": "function",
         "function": {
@@ -218,8 +236,79 @@ TOOLS = [
 # =============================================================================
 # 4. EXÉCUTION DES FONCTIONS PYTHON SUR LA BASE DE DONNÉES ET LES APIS
 # =============================================================================
+def search_parcel_by_name(query_name: str, db: Session) -> Dict[str, Any]:
+    """
+    Recherche une parcelle dans PostGIS par son nom, sa commune, sa ville ou sa région.
+    Gère la casse, les alias géographiques (ex: Antsiranana / Diego Suarez, Esch-sur-Alzette, etc.).
+    """
+    if not query_name or not query_name.strip():
+        return {"parcel_id": None, "found": False, "message": "Nom de recherche vide."}
+
+    clean_q = query_name.strip().lower()
+    parcels = db.query(Parcel).all()
+    if not parcels:
+        return {"parcel_id": None, "found": False, "message": "Aucune parcelle enregistrée."}
+
+    aliases = {
+        "antsiranana": ["antsiranana", "diego", "diego-suarez", "diego suarez"],
+        "esch": ["esch", "esch-sur-alzette", "esch/alzette", "alzette"],
+        "luxembourg": ["luxembourg", "luxembourg-ville", "lux-ville"],
+        "nosy be": ["nosy be", "nosy-be", "nosybe", "hell-ville"],
+        "ambanja": ["ambanja", "sambirano"],
+        "ambilobe": ["ambilobe"],
+        "kirchberg": ["kirchberg"],
+        "clervaux": ["clervaux"]
+    }
+
+    best_match = None
+
+    # 1. Correspondance via dictionnaire d'alias
+    for target_key, keywords in aliases.items():
+        if any(kw in clean_q for kw in keywords):
+            for p in parcels:
+                p_name_lower = p.name.lower()
+                p_reg_lower = (p.region or "").lower()
+                if any(kw in p_name_lower or kw in p_reg_lower for kw in keywords):
+                    best_match = p
+                    break
+        if best_match:
+            break
+
+    # 2. Correspondance directe mot-à-mot sur p.name ou p.region
+    if not best_match:
+        words = [w for w in re.split(r"[\s,\'-]+", clean_q) if len(w) >= 4 and w not in ["dans", "pour", "vers", "avec", "mon", "parcelle", "terrain", "champ", "salut", "comment", "pourquoi"]]
+        for p in parcels:
+            p_name = p.name.lower()
+            p_reg = (p.region or "").lower()
+            if any(w in p_name or w in p_reg for w in words):
+                best_match = p
+                break
+
+    if best_match:
+        return {
+            "parcel_id": best_match.id,
+            "name": best_match.name,
+            "region": best_match.region,
+            "country": best_match.country,
+            "latitude": best_match.latitude,
+            "longitude": best_match.longitude,
+            "found": True
+        }
+
+    return {
+        "parcel_id": None,
+        "found": False,
+        "message": f"Aucune parcelle trouvée correspondant à '{query_name}'."
+    }
+
+
 def execute_backend_function(name: str, args: Dict[str, Any], db: Session) -> Dict[str, Any]:
     """Exécute les outils réels connectés à la base de données et aux APIs scientifiques."""
+    # 0. search_parcel_by_name (Recherche dynamique par nom ou ville)
+    if name == "search_parcel_by_name":
+        search_query = args.get("name") or args.get("query") or ""
+        return search_parcel_by_name(search_query, db)
+
     parcel_id = args.get("parcel_id")
     parcel = None
     if parcel_id:
@@ -610,6 +699,15 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
             f"plage de pH {res.get('ph_optimum', 'N/A')}. Source : FAO ECOCROP."
         )
 
+    elif name == "search_parcel_by_name":
+        if res.get("found"):
+            return (
+                f"J'ai bien identifié votre exploitation '{res.get('name')}' située en région {res.get('region')} ({res.get('country')}). "
+                f"Je consulte immédiatement les données scientifiques associées."
+            )
+        else:
+            return f"Je n'ai pas trouvé d'exploitation correspondant à cette recherche parmi vos parcelles enregistrées."
+
     return "Je rencontre une difficulté technique pour accéder à vos données. Veuillez réessayer dans quelques instants."
 
 
@@ -676,7 +774,21 @@ def run_chat_agent(
         db.commit()
 
     effective_parcel_id = parcel_id or session.parcel_id
-    if not effective_parcel_id:
+    tool_calls_executed = []
+    response_text = ""
+
+    # Détection dynamique de parcelle si l'utilisateur mentionne une ville ou un nom dans son message
+    searched = search_parcel_by_name(message, db)
+    if searched.get("found"):
+        effective_parcel_id = searched["parcel_id"]
+        session.parcel_id = effective_parcel_id
+        db.commit()
+        tool_calls_executed.append({
+            "tool": "search_parcel_by_name",
+            "name": searched["name"],
+            "parcel_id": effective_parcel_id
+        })
+    elif not effective_parcel_id:
         p_first = db.query(Parcel).first()
         effective_parcel_id = p_first.id if p_first else None
 
@@ -689,8 +801,6 @@ def run_chat_agent(
     )
 
     msg_lower = message.lower().replace(",", " ").replace("?", " ").replace("!", " ").replace(".", " ").strip()
-    tool_calls_executed = []
-    response_text = ""
 
     # =========================================================================
     # GUARDRAIL 1 : PESTICIDES & PRODUITS CHIMIQUES DE SYNTHÈSE
@@ -851,12 +961,21 @@ def run_chat_agent(
                         except Exception:
                             fn_args = {}
 
-                        if "parcel_id" not in fn_args and effective_parcel_id:
-                            fn_args["parcel_id"] = effective_parcel_id
+                        if fn_name == "search_parcel_by_name":
+                            tool_output = execute_backend_function(fn_name, fn_args, db)
+                            tool_calls_executed.append({"tool": fn_name, **fn_args})
+                            if tool_output.get("found") and tool_output.get("parcel_id"):
+                                effective_parcel_id = tool_output["parcel_id"]
+                                if session:
+                                    session.parcel_id = effective_parcel_id
+                                    db.commit()
+                        else:
+                            if "parcel_id" not in fn_args and effective_parcel_id:
+                                fn_args["parcel_id"] = effective_parcel_id
 
-                        # Exécution de la fonction Python backend
-                        tool_output = execute_backend_function(fn_name, fn_args, db)
-                        tool_calls_executed.append({"tool": fn_name, **fn_args})
+                            # Exécution de la fonction Python backend
+                            tool_output = execute_backend_function(fn_name, fn_args, db)
+                            tool_calls_executed.append({"tool": fn_name, **fn_args})
 
                         messages_payload.append({
                             "role": "tool",

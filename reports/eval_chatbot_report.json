@@ -209,6 +209,7 @@
       "category": "parcel_rotation",
       "question": "Pourquoi la rotation des cultures est-elle importante sur ma parcelle ?",
       "called_tools": [
+        "search_parcel_by_name",
         "get_parcel_diagnosis",
         "get_crop_recommendation"
       ],
