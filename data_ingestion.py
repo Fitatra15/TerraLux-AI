@@ -36,6 +36,14 @@ DEMO_POINTS = {
         "lon": 5.9806,
         "wrb_class": "Luvisol haplique"
     },
+    "clervaux": {
+        "name": "Clervaux (Oesling)",
+        "country": "LUX",
+        "region": "Canton Clervaux",
+        "lat": 50.0547,
+        "lon": 6.0306,
+        "wrb_class": "Cambisol dystrique"
+    },
     "antsiranana": {
         "name": "Antsiranana (Diego Suarez)",
         "country": "MDG",
@@ -74,6 +82,7 @@ DEMO_POINTS = {
 REFERENCE_CLIMATE_DATA = {
     "luxembourg_ville": {"mean_t": 10.2, "mean_rain": 845.0, "mean_rh": 76.0, "gwetroot": 0.65},
     "esch_sur_alzette": {"mean_t": 10.5, "mean_rain": 810.0, "mean_rh": 75.0, "gwetroot": 0.63},
+    "clervaux": {"mean_t": 8.8, "mean_rain": 980.0, "mean_rh": 82.0, "gwetroot": 0.70},
     "antsiranana": {"mean_t": 27.2, "mean_rain": 1120.0, "mean_rh": 78.0, "gwetroot": 0.55},
     "nosy_be": {"mean_t": 26.2, "mean_rain": 2180.0, "mean_rh": 84.0, "gwetroot": 0.68},
     "ambanja": {"mean_t": 26.5, "mean_rain": 2050.0, "mean_rh": 83.0, "gwetroot": 0.66},
@@ -90,6 +99,11 @@ REFERENCE_SOIL_DATA = {
         "0-5cm": {"soc": 25.2, "nitrogen": 2.1, "cec": 21.8, "ph": 6.8, "clay": 28.0, "sand": 26.0, "silt": 46.0},
         "5-15cm": {"soc": 18.4, "nitrogen": 1.6, "cec": 20.2, "ph": 6.7, "clay": 30.0, "sand": 24.0, "silt": 46.0},
         "15-30cm": {"soc": 12.0, "nitrogen": 1.1, "cec": 18.5, "ph": 6.6, "clay": 32.0, "sand": 22.0, "silt": 46.0}
+    },
+    "clervaux": {
+        "0-5cm": {"soc": 26.0, "nitrogen": 2.2, "cec": 18.0, "ph": 5.9, "clay": 19.0, "sand": 41.0, "silt": 40.0},
+        "5-15cm": {"soc": 19.0, "nitrogen": 1.6, "cec": 16.5, "ph": 5.8, "clay": 21.0, "sand": 39.0, "silt": 40.0},
+        "15-30cm": {"soc": 13.0, "nitrogen": 1.1, "cec": 15.0, "ph": 5.7, "clay": 23.0, "sand": 37.0, "silt": 40.0}
     },
     "antsiranana": {
         "0-5cm": {"soc": 21.4, "nitrogen": 1.6, "cec": 14.2, "ph": 5.8, "clay": 48.0, "sand": 32.0, "silt": 20.0},

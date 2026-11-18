@@ -24,6 +24,7 @@ from app.models import (
     Event, ReforestationZone
 )
 from app.soil_intelligence import compute_richness_index
+from app.luxembourg_geo import seed_luxembourg_geography, get_region_from_city
 from data_ingestion import DEMO_POINTS, REFERENCE_SOIL_DATA, REFERENCE_CLIMATE_DATA
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -39,6 +40,9 @@ def seed_database(dry_run: bool = False):
     db: Session = SessionLocal()
 
     try:
+        # 0. Géographie administrative du Luxembourg (Régions, Cantons, Communes, Localités)
+        seed_luxembourg_geography(db)
+
         # 1. Plantes & Pays (FAO ECOCROP)
         ecocrop_path = os.path.join("data", "plants_ecocrop.csv")
         if os.path.exists(ecocrop_path):
@@ -86,6 +90,18 @@ def seed_database(dry_run: bool = False):
             ).first()
 
             parcel_name = f"Exploitation {info['name']}" if info['country'] == 'LUX' else f"Domaine {info['name']}"
+            if info['country'] == 'LUX':
+                reg_nat = get_region_from_city(info['name']) or ("Oesling" if info["lat"] > 49.90 else "Gutland")
+                if "esch" in info['name'].lower():
+                    canton_val = "Canton d'Esch-sur-Alzette"
+                elif "clervaux" in info['name'].lower():
+                    canton_val = "Canton de Clervaux"
+                else:
+                    canton_val = "Canton de Luxembourg"
+            else:
+                reg_nat = "Diana"
+                canton_val = "Diana"
+
             if not parcel:
                 parcel = Parcel(
                     name=parcel_name,
@@ -93,13 +109,18 @@ def seed_database(dry_run: bool = False):
                     longitude=info["lon"],
                     country=info["country"],
                     region=info["region"],
+                    region_natural=reg_nat,
+                    canton=canton_val,
                     area_ha=3.5 if info["country"] == "MDG" else 8.0
                 )
                 db.add(parcel)
                 db.flush()
                 logger.info(f"Parcelle créée : {info['name']} (ID: {parcel.id})")
-            elif "démo" in parcel.name.lower() or "demo" in parcel.name.lower():
-                parcel.name = parcel_name
+            else:
+                if "démo" in parcel.name.lower() or "demo" in parcel.name.lower():
+                    parcel.name = parcel_name
+                parcel.region_natural = reg_nat
+                parcel.canton = canton_val
                 db.add(parcel)
                 db.flush()
 

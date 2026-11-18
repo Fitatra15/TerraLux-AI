@@ -71,6 +71,11 @@ SYSTEM_PROMPT = (
     "- Si l'utilisateur mentionne le nom d'une parcelle ou d'une ville (ex: 'Antsiranana', 'Luxembourg-ville', 'Esch-sur-Alzette', 'Nosy Be'), "
     "tu dois D'ABORD appeler l'outil search_parcel_by_name pour trouver le bon parcel_id. Ensuite, utilise ce parcel_id pour appeler "
     "les autres outils (get_parcel_diagnosis, get_crop_recommendation, get_weather_forecast, get_soil_richness). Ne devine jamais la parcelle.\n"
+    "- Tu connais parfaitement la géographie administrative du Luxembourg. Si un utilisateur mentionne une localité (ex: 'Eselborn'), "
+    "tu dois savoir qu'elle se trouve dans la commune de Clervaux (Canton de Clervaux, Région de l'Oesling). Utilise ces informations pour "
+    "contextualiser tes réponses agronomiques. Par exemple, si la parcelle est en Oesling, privilégie les cultures adaptées au climat plus frais "
+    "et aux sols schisteux. Distingue rigoureusement selon le contexte : 'Luxembourg-ville' (la capitale, Gutland), 'Canton de Luxembourg' "
+    "(le canton administratif), et 'Luxembourg' (le pays dans son ensemble).\n"
     "- Comprends l'intention derrière la question de l'utilisateur. S'il pose une question sur sa récolte, son sol, "
     "ou la météo, tu dois utiliser les outils (Function Calling) pour aller chercher les vraies données.\n"
     "- Si la question est générale (ex: 'C'est quoi le maïs ?', 'Comment vas-tu ?'), tu peux répondre avec tes connaissances "
@@ -238,8 +243,9 @@ TOOLS = [
 # =============================================================================
 def search_parcel_by_name(query_name: str, db: Session) -> Dict[str, Any]:
     """
-    Recherche une parcelle dans PostGIS par son nom, sa commune, sa ville ou sa région.
-    Gère la casse, les alias géographiques (ex: Antsiranana / Diego Suarez, Esch-sur-Alzette, etc.).
+    Recherche une parcelle dans PostGIS par son nom, sa commune, sa ville, sa localité ou sa région.
+    Gère la casse, les alias géographiques (ex: Antsiranana / Diego Suarez, Esch-sur-Alzette, etc.)
+    et la hiérarchie territoriale complète du Luxembourg (Oesling, Gutland, cantons, communes, localités).
     """
     if not query_name or not query_name.strip():
         return {"parcel_id": None, "found": False, "message": "Nom de recherche vide."}
@@ -249,51 +255,109 @@ def search_parcel_by_name(query_name: str, db: Session) -> Dict[str, Any]:
     if not parcels:
         return {"parcel_id": None, "found": False, "message": "Aucune parcelle enregistrée."}
 
-    aliases = {
-        "antsiranana": ["antsiranana", "diego", "diego-suarez", "diego suarez"],
-        "esch": ["esch", "esch-sur-alzette", "esch/alzette", "alzette"],
-        "luxembourg": ["luxembourg", "luxembourg-ville", "lux-ville"],
-        "nosy be": ["nosy be", "nosy-be", "nosybe", "hell-ville"],
-        "ambanja": ["ambanja", "sambirano"],
-        "ambilobe": ["ambilobe"],
-        "kirchberg": ["kirchberg"],
-        "clervaux": ["clervaux"]
-    }
+    # 1. Vérification hiérarchie administrative officielle du Luxembourg (SIG)
+    from app.luxembourg_geo import get_luxembourg_hierarchy, get_region_from_city
+    lux_info = get_luxembourg_hierarchy(clean_q, db)
 
     best_match = None
 
-    # 1. Correspondance via dictionnaire d'alias
-    for target_key, keywords in aliases.items():
-        if any(kw in clean_q for kw in keywords):
-            for p in parcels:
-                p_name_lower = p.name.lower()
-                p_reg_lower = (p.region or "").lower()
-                if any(kw in p_name_lower or kw in p_reg_lower for kw in keywords):
+    if lux_info:
+        loc_name = lux_info["locality"].lower()
+        comm_name = lux_info["commune"].lower()
+        cant_name = lux_info["canton"].lower()
+        reg_nat = lux_info["region_natural"]
+
+        # Recherche de parcelle existante correspondant à la localité, commune ou canton
+        for p in parcels:
+            if p.country == "LUX":
+                p_n = p.name.lower()
+                p_c = (getattr(p, "canton", "") or "").lower()
+                p_r = (p.region or "").lower()
+                if (loc_name in p_n or comm_name in p_n or cant_name in p_n or
+                    cant_name in p_c or cant_name in p_r):
                     best_match = p
                     break
-        if best_match:
-            break
 
-    # 2. Correspondance directe mot-à-mot sur p.name ou p.region
+        # Recherche dans la même région naturelle si pas de correspondance directe
+        if not best_match:
+            for p in parcels:
+                if p.country == "LUX" and getattr(p, "region_natural", None) == reg_nat:
+                    best_match = p
+                    break
+
+        # Si aucune parcelle trouvée, création persistante de la parcelle pour cette localité
+        if not best_match:
+            best_match = Parcel(
+                name=f"Exploitation {lux_info['locality']}",
+                latitude=lux_info["latitude"],
+                longitude=lux_info["longitude"],
+                country="LUX",
+                region=f"Canton de {lux_info['canton']}",
+                region_natural=reg_nat,
+                canton=f"Canton de {lux_info['canton']}",
+                area_ha=7.0
+            )
+            db.add(best_match)
+            db.commit()
+            db.refresh(best_match)
+
+    # 2. Dictionnaire d'alias et synonymes (Madagascar & Luxembourg)
     if not best_match:
-        words = [w for w in re.split(r"[\s,\'-]+", clean_q) if len(w) >= 4 and w not in ["dans", "pour", "vers", "avec", "mon", "parcelle", "terrain", "champ", "salut", "comment", "pourquoi"]]
+        aliases = {
+            "antsiranana": ["antsiranana", "diego", "diego-suarez", "diego suarez"],
+            "esch": ["esch", "esch-sur-alzette", "esch/alzette", "alzette"],
+            "luxembourg": ["luxembourg", "luxembourg-ville", "lux-ville", "kirchberg"],
+            "nosy be": ["nosy be", "nosy-be", "nosybe", "hell-ville"],
+            "ambanja": ["ambanja", "sambirano"],
+            "ambilobe": ["ambilobe"],
+            "clervaux": ["clervaux", "eislek", "oesling", "wilwerdange", "troisvierges", "eselborn"]
+        }
+
+        for target_key, keywords in aliases.items():
+            if any(kw in clean_q for kw in keywords):
+                for p in parcels:
+                    p_name_lower = p.name.lower()
+                    p_reg_lower = (p.region or "").lower()
+                    if any(kw in p_name_lower or kw in p_reg_lower for kw in keywords):
+                        best_match = p
+                        break
+            if best_match:
+                break
+
+    # 3. Correspondance directe mot-à-mot sur p.name, p.canton ou p.region
+    if not best_match:
+        words = [w for w in re.split(r"[\s,\'-]+", clean_q) if len(w) >= 4 and w not in [
+            "dans", "pour", "vers", "avec", "mon", "parcelle", "terrain", "champ", "salut", "comment", "pourquoi", "quelles", "quelle"
+        ]]
         for p in parcels:
             p_name = p.name.lower()
             p_reg = (p.region or "").lower()
-            if any(w in p_name or w in p_reg for w in words):
+            p_cant = (getattr(p, "canton", "") or "").lower()
+            if any(w in p_name or w in p_reg or w in p_cant for w in words):
                 best_match = p
                 break
 
     if best_match:
-        return {
+        out = {
             "parcel_id": best_match.id,
             "name": best_match.name,
             "region": best_match.region,
             "country": best_match.country,
             "latitude": best_match.latitude,
             "longitude": best_match.longitude,
+            "region_natural": getattr(best_match, "region_natural", None) or get_region_from_city(best_match.name),
+            "canton": getattr(best_match, "canton", None),
             "found": True
         }
+        if lux_info:
+            out["administrative_hierarchy"] = {
+                "locality": lux_info["locality"],
+                "commune": lux_info["commune"],
+                "canton": lux_info["canton"],
+                "region_natural": lux_info["region_natural"],
+                "is_city": lux_info["is_city"]
+            }
+        return out
 
     return {
         "parcel_id": None,
@@ -339,6 +403,8 @@ def execute_backend_function(name: str, args: Dict[str, Any], db: Session) -> Di
             "parcel_name": parcel.name,
             "country": parcel.country,
             "region": parcel.region,
+            "region_natural": getattr(parcel, "region_natural", None),
+            "canton": getattr(parcel, "canton", None),
             "area_ha": parcel.area_ha,
             "soil_classification_wrb": wrb,
             "soil_ph": ph,

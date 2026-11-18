@@ -174,7 +174,24 @@ def create_parcel(
     country, region = detect_country_and_region(parcel_in.latitude, parcel_in.longitude)
     
     user_id = current_user.id if current_user else None
-    
+
+    region_natural = parcel_in.region_natural
+    canton = parcel_in.canton
+
+    if country == "LUX":
+        from app.luxembourg_geo import get_region_from_city, get_luxembourg_hierarchy
+        hier = get_luxembourg_hierarchy(parcel_in.name or "", db)
+        if hier:
+            region_natural = region_natural or hier["region_natural"]
+            canton = canton or hier["canton"]
+            region = region or (f"Canton de {canton}" if not canton.startswith("Canton") else canton)
+        else:
+            region_natural = region_natural or (get_region_from_city(parcel_in.name or "") or ("Oesling" if parcel_in.latitude > 49.90 else "Gutland"))
+            canton = canton or ("Canton de Clervaux" if region_natural == "Oesling" else ("Canton d'Esch-sur-Alzette" if parcel_in.latitude < 49.55 else "Canton de Luxembourg"))
+    elif country == "MDG":
+        region_natural = region_natural or "Diana"
+        canton = canton or "Diana"
+
     new_parcel = Parcel(
         user_id=user_id,
         name=parcel_in.name or f"Parcelle {region or country}",
@@ -182,6 +199,8 @@ def create_parcel(
         longitude=parcel_in.longitude,
         country=country,
         region=region,
+        region_natural=region_natural,
+        canton=canton,
         area_ha=parcel_in.area_ha or 1.0
     )
     db.add(new_parcel)

@@ -26,7 +26,7 @@ def get_db():
         db.close()
 
 def init_db():
-    """Initializes database tables."""
+    """Initializes database tables and ensures schema migrations."""
     # When connecting to PostgreSQL, attempt to create PostGIS extension if superuser
     if settings.DATABASE_URL.startswith("postgresql"):
         try:
@@ -34,7 +34,26 @@ def init_db():
                 from sqlalchemy import text
                 conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
                 conn.commit()
-        except Exception as e:
-            # Non-critical if user doesn't have superuser or extension already exists
+        except Exception:
             pass
     Base.metadata.create_all(bind=engine)
+
+    # Safe column additions on existing parcels table
+    try:
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            if settings.DATABASE_URL.startswith("postgresql"):
+                conn.execute(text("ALTER TABLE parcels ADD COLUMN IF NOT EXISTS region_natural VARCHAR(100);"))
+                conn.execute(text("ALTER TABLE parcels ADD COLUMN IF NOT EXISTS canton VARCHAR(100);"))
+                conn.commit()
+            else:
+                # SQLite PRAGMA check
+                res = conn.execute(text("PRAGMA table_info(parcels);")).fetchall()
+                col_names = [r[1] for r in res]
+                if "region_natural" not in col_names:
+                    conn.execute(text("ALTER TABLE parcels ADD COLUMN region_natural VARCHAR(100);"))
+                if "canton" not in col_names:
+                    conn.execute(text("ALTER TABLE parcels ADD COLUMN canton VARCHAR(100);"))
+                conn.commit()
+    except Exception:
+        pass

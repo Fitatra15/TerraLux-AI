@@ -40,6 +40,8 @@ class Parcel(Base):
     longitude = Column(Float, nullable=False)
     country = Column(String(10), nullable=True) # LUX, MDG
     region = Column(String(100), nullable=True)
+    region_natural = Column(String(100), nullable=True) # Oesling, Gutland, Diana
+    canton = Column(String(100), nullable=True) # Canton Clervaux, Canton Esch-sur-Alzette, etc.
     area_ha = Column(Numeric(10, 2), nullable=True, default=1.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -367,3 +369,55 @@ class FederatedRound(Base):
     metrics = Column(JSON, nullable=False)
     gradient_hash = Column(String(64), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+# =====================================================================
+# Luxembourg Administrative Geography (SIG & Territoire)
+# =====================================================================
+
+class Region(Base):
+    """Région naturelle (Oesling, Gutland)"""
+    __tablename__ = "regions"
+
+    id = IdColumn()
+    name = Column(String(100), unique=True, nullable=False, index=True)
+
+    cantons = relationship("Canton", back_populates="region", cascade="all, delete-orphan")
+
+
+class Canton(Base):
+    """Canton administratif du Luxembourg (12 cantons)"""
+    __tablename__ = "cantons"
+
+    id = IdColumn()
+    name = Column(String(100), nullable=False, index=True)
+    region_id = Column(String(36), ForeignKey("regions.id"), nullable=False)
+
+    region = relationship("Region", back_populates="cantons")
+    communes = relationship("Commune", back_populates="canton", cascade="all, delete-orphan")
+
+
+class Commune(Base):
+    """Commune administrative avec statut de Ville (is_city)"""
+    __tablename__ = "communes"
+
+    id = IdColumn()
+    name = Column(String(100), nullable=False, index=True)
+    canton_id = Column(String(36), ForeignKey("cantons.id"), nullable=False)
+    is_city = Column(Boolean, default=False, nullable=False)
+
+    canton = relationship("Canton", back_populates="communes")
+    localities = relationship("Locality", back_populates="commune", cascade="all, delete-orphan")
+
+
+class Locality(Base):
+    """Localité ou village rattaché à une commune avec géolocalisation"""
+    __tablename__ = "localities"
+
+    id = IdColumn()
+    name = Column(String(100), nullable=False, index=True)
+    commune_id = Column(String(36), ForeignKey("communes.id"), nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+
+    commune = relationship("Commune", back_populates="localities")

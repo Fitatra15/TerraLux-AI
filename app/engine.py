@@ -218,10 +218,33 @@ def get_recommendation(parcel_id: str, db: Session) -> List[CropRecommendationIt
                 soil_profile = db.query(SoilProfile).filter(SoilProfile.parcel_id == closest_parcel.id, SoilProfile.depth_cm.in_(["0-5", "0-5cm"])).first()
 
     # Priorité aux observations directes et données récentes
-    mean_temp = obs_temp.value if obs_temp else (live_temp if live_temp is not None else (26.5 if country_code == "MDG" else 10.5))
-    annual_rain = obs_rain.value if obs_rain else (1350.0 if country_code == "MDG" else 845.0)
-    ph = soil_profile.ph if soil_profile and soil_profile.ph else (5.8 if country_code == "MDG" else 6.6)
-    clay = soil_profile.clay if soil_profile and soil_profile.clay else (48.0 if country_code == "MDG" else 24.0)
+    region_natural = getattr(parcel, "region_natural", None)
+    if not region_natural and country_code == "LUX":
+        from app.luxembourg_geo import get_region_from_city
+        region_natural = get_region_from_city(parcel.name or "") or ("Oesling" if parcel.latitude > 49.90 else "Gutland")
+
+    # Paramètres climatiques et pédologiques par défaut calibrés par région
+    if country_code == "LUX":
+        if region_natural == "Oesling":
+            default_temp = 8.8
+            default_rain = 980.0
+            default_ph = 5.9
+            default_clay = 19.0
+        else:
+            default_temp = 10.5
+            default_rain = 845.0
+            default_ph = 6.6
+            default_clay = 24.0
+    else:
+        default_temp = 26.5
+        default_rain = 1350.0
+        default_ph = 5.8
+        default_clay = 48.0
+
+    mean_temp = obs_temp.value if obs_temp else (live_temp if live_temp is not None else default_temp)
+    annual_rain = obs_rain.value if obs_rain else default_rain
+    ph = soil_profile.ph if soil_profile and soil_profile.ph else default_ph
+    clay = soil_profile.clay if soil_profile and soil_profile.clay else default_clay
 
     current_year = datetime.utcnow().year
 
@@ -254,10 +277,32 @@ def get_recommendation(parcel_id: str, db: Session) -> List[CropRecommendationIt
         elif plant.type in ["legume", "fruit"]:
             priority_multiplier = 1.01
 
+        # Spécificités agro-climatiques régionales Luxembourg (Oesling vs Gutland)
+        geo_positives = []
+        geo_negatives = []
+        if country_code == "LUX":
+            if region_natural == "Oesling":
+                if plant.name_fr in ["Pomme de terre", "Avoine", "Seigle", "Colza d'hiver"]:
+                    priority_multiplier *= 1.08
+                    geo_positives.append(
+                        f"Région Oesling (plateau ardennais) : climat frais ({mean_temp:.1f}°C) et sol schisto-quartziteux (pH {ph:.1f}) hautement favorables à la rusticité de {plant.name_fr}"
+                    )
+                elif plant.name_fr in ["Vigne", "Maïs ensilage"]:
+                    priority_multiplier *= 0.82
+                    geo_negatives.append(
+                        f"Contrainte Oesling : altitude et sols schisteux acides défavorables aux exigences thermiques de {plant.name_fr}"
+                    )
+            elif region_natural == "Gutland":
+                if plant.name_fr in ["Blé d'hiver", "Orge d'hiver", "Colza d'hiver", "Vigne"]:
+                    priority_multiplier *= 1.05
+                    geo_positives.append(
+                        f"Région Gutland (Bon Pays) : climat tempéré ({mean_temp:.1f}°C) et sols marno-calcaires profonds (pH {ph:.1f}) idéaux pour {plant.name_fr}"
+                    )
+
         final_score = min(100.0, round(base_score * priority_multiplier, 1))
 
-        all_positives = clim_pos + soil_pos
-        all_negatives = clim_neg + soil_neg
+        all_positives = clim_pos + soil_pos + geo_positives
+        all_negatives = clim_neg + soil_neg + geo_negatives
         if not all_negatives:
             all_negatives.append("Aucune contrainte agronomique majeure identifiée")
         if not all_positives:

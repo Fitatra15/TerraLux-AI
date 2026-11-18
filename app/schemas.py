@@ -38,6 +38,8 @@ class ParcelCreate(BaseModel):
     latitude: float
     longitude: float
     area_ha: Optional[float] = 1.0
+    canton: Optional[str] = None
+    region_natural: Optional[str] = None
 
 class ParcelOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -47,6 +49,8 @@ class ParcelOut(BaseModel):
     longitude: float
     country: Optional[str] = None
     region: Optional[str] = None
+    canton: Optional[str] = None
+    region_natural: Optional[str] = None
     area_ha: Optional[float] = 1.0
     created_at: Optional[datetime] = None
     soil_type: Optional[str] = None
