@@ -15,336 +15,16 @@ from app.models import Region, Canton, Commune, Locality, Parcel
 
 logger = logging.getLogger("terralux.lux_geo")
 
-# =============================================================================
-# RÉFÉRENTIEL OFFICIEL SIG DU LUXEMBOURG
-# =============================================================================
-LUX_REGIONS = [
-    {
-        "name": "Oesling",
-        "alt_names": ["Éislek", "Eislek", "Oesling", "Nord"],
-        "description": "Plateau ardennais septentrional (altitudes 400-560m). Climat plus frais et rude, gelées tardives. Sols schisto-quartziteux bruns acides (Cambisols dystriques, Leptosols).",
-        "temp_offset_c": -1.8, # Climat plus frais par rapport à la plaine
-        "rain_offset_mm": 120.0, # Pluies plus abondantes sur le relief
-        "typical_ph": 5.9,
-        "soil_type": "Sols schisteux et quartziteux ardennais (Cambisols dystriques)"
-    },
-    {
-        "name": "Gutland",
-        "alt_names": ["Bon Pays", "Gutland", "Centre", "Sud"],
-        "description": "Région centre et sud (altitudes 130-350m). Climat tempéré et doux, vallées fluviales (Moselle). Sols marno-calcaires, limoneux et alluviaux profonds (Cambisols calcaro-eutriques, Luvisols).",
-        "temp_offset_c": 0.0,
-        "rain_offset_mm": 0.0,
-        "typical_ph": 6.7,
-        "soil_type": "Sols marno-calcaires et alluviaux fertiles (Cambisols calcaro-eutriques / Luvisols)"
-    }
-]
+from app.all_geo_data import (
+    GEO_REGIONS,
+    GEO_CANTONS,
+    GEO_COMMUNES_AND_LOCALITIES
+)
 
-# Les 12 Cantons rattachés à leur région naturelle
-LUX_CANTONS = [
-    # Oesling (Nord ardennais)
-    {"name": "Clervaux", "region": "Oesling"},
-    {"name": "Wiltz", "region": "Oesling"},
-    {"name": "Vianden", "region": "Oesling"},
-
-    # Gutland (Centre, Sud, Est, Ouest)
-    {"name": "Diekirch", "region": "Gutland"},
-    {"name": "Redange", "region": "Gutland"},
-    {"name": "Echternach", "region": "Gutland"},
-    {"name": "Mersch", "region": "Gutland"},
-    {"name": "Grevenmacher", "region": "Gutland"},
-    {"name": "Capellen", "region": "Gutland"},
-    {"name": "Luxembourg", "region": "Gutland"},
-    {"name": "Esch-sur-Alzette", "region": "Gutland"},
-    {"name": "Remich", "region": "Gutland"},
-]
-
-# Communes et leurs localités rattachées (avec les 12 Villes officielles: is_city = True)
-LUX_COMMUNES_AND_LOCALITIES = [
-    # --- CANTON DE CLERVAUX (Oesling) ---
-    {
-        "commune": "Clervaux",
-        "canton": "Clervaux",
-        "is_city": False,
-        "localities": [
-            {"name": "Clervaux", "lat": 50.055, "lon": 6.030},
-            {"name": "Eselborn", "lat": 49.996, "lon": 6.007},
-            {"name": "Reuler", "lat": 50.057, "lon": 6.035},
-            {"name": "Urspelt", "lat": 50.075, "lon": 6.046},
-            {"name": "Munshausen", "lat": 50.033, "lon": 6.037},
-            {"name": "Drauffelt", "lat": 50.016, "lon": 6.004},
-            {"name": "Mecher", "lat": 50.027, "lon": 5.992},
-            {"name": "Weicherdange", "lat": 50.039, "lon": 5.989}
-        ]
-    },
-    {
-        "commune": "Troisvierges",
-        "canton": "Clervaux",
-        "is_city": False,
-        "localities": [
-            {"name": "Troisvierges", "lat": 50.120, "lon": 5.990},
-            {"name": "Wilwerdange", "lat": 50.138, "lon": 6.021},
-            {"name": "Huldange", "lat": 50.165, "lon": 6.015},
-            {"name": "Basbellain", "lat": 50.155, "lon": 5.975},
-            {"name": "Hautbellain", "lat": 50.161, "lon": 5.955},
-            {"name": "Drinklange", "lat": 50.141, "lon": 6.002},
-            {"name": "Goedange", "lat": 50.145, "lon": 6.047}
-        ]
-    },
-    {
-        "commune": "Parc Hosingen",
-        "canton": "Clervaux",
-        "is_city": False,
-        "localities": [
-            {"name": "Hosingen", "lat": 50.012, "lon": 6.089},
-            {"name": "Dorscheid", "lat": 50.028, "lon": 6.096},
-            {"name": "Holzthum", "lat": 49.988, "lon": 6.067},
-            {"name": "Consthum", "lat": 49.974, "lon": 6.054}
-        ]
-    },
-
-    # --- CANTON DE WILTZ (Oesling) ---
-    {
-        "commune": "Wiltz",
-        "canton": "Wiltz",
-        "is_city": True, # Ville officielle 1/12
-        "localities": [
-            {"name": "Wiltz", "lat": 49.967, "lon": 5.933},
-            {"name": "Roullingen", "lat": 49.954, "lon": 5.925},
-            {"name": "Weidingen", "lat": 49.962, "lon": 5.949},
-            {"name": "Eschweiler", "lat": 49.998, "lon": 5.952},
-            {"name": "Erpeldange-Wiltz", "lat": 49.979, "lon": 5.932}
-        ]
-    },
-    {
-        "commune": "Lac de la Haute-Sûre",
-        "canton": "Wiltz",
-        "is_city": False,
-        "localities": [
-            {"name": "Bavigne", "lat": 49.923, "lon": 5.852},
-            {"name": "Kaundorf", "lat": 49.921, "lon": 5.903},
-            {"name": "Mecher-Haute-Sûre", "lat": 49.926, "lon": 5.875}
-        ]
-    },
-
-    # --- CANTON DE VIANDEN (Oesling) ---
-    {
-        "commune": "Vianden",
-        "canton": "Vianden",
-        "is_city": True, # Ville officielle 2/12
-        "localities": [
-            {"name": "Vianden", "lat": 49.934, "lon": 6.209}
-        ]
-    },
-
-    # --- CANTON DE DIEKIRCH (Gutland) ---
-    {
-        "commune": "Diekirch",
-        "canton": "Diekirch",
-        "is_city": True, # Ville officielle 3/12
-        "localities": [
-            {"name": "Diekirch", "lat": 49.868, "lon": 6.160}
-        ]
-    },
-    {
-        "commune": "Ettelbruck",
-        "canton": "Diekirch",
-        "is_city": True, # Ville officielle 4/12
-        "localities": [
-            {"name": "Ettelbruck", "lat": 49.847, "lon": 6.104},
-            {"name": "Warken", "lat": 49.858, "lon": 6.096}
-        ]
-    },
-
-    # --- CANTON D'ECHTERNACH (Gutland) ---
-    {
-        "commune": "Echternach",
-        "canton": "Echternach",
-        "is_city": True, # Ville officielle 5/12
-        "localities": [
-            {"name": "Echternach", "lat": 49.812, "lon": 6.421}
-        ]
-    },
-
-    # --- CANTON DE GREVENMACHER (Gutland) ---
-    {
-        "commune": "Grevenmacher",
-        "canton": "Grevenmacher",
-        "is_city": True, # Ville officielle 6/12
-        "localities": [
-            {"name": "Grevenmacher", "lat": 49.681, "lon": 6.441}
-        ]
-    },
-
-    # --- CANTON DE REMICH (Gutland) ---
-    {
-        "commune": "Remich",
-        "canton": "Remich",
-        "is_city": True, # Ville officielle 7/12
-        "localities": [
-            {"name": "Remich", "lat": 49.544, "lon": 6.368}
-        ]
-    },
-    {
-        "commune": "Mondorf-les-Bains",
-        "canton": "Remich",
-        "is_city": False,
-        "localities": [
-            {"name": "Mondorf-les-Bains", "lat": 49.505, "lon": 6.281},
-            {"name": "Altwies", "lat": 49.511, "lon": 6.257}
-        ]
-    },
-
-    # --- CANTON DE LUXEMBOURG (Gutland) ---
-    {
-        "commune": "Luxembourg",
-        "canton": "Luxembourg",
-        "is_city": True, # Ville officielle 8/12 (Capitale)
-        "localities": [
-            {"name": "Luxembourg-ville", "lat": 49.611, "lon": 6.131},
-            {"name": "Kirchberg", "lat": 49.627, "lon": 6.160},
-            {"name": "Limpertsberg", "lat": 49.621, "lon": 6.121},
-            {"name": "Gasperich", "lat": 49.589, "lon": 6.121},
-            {"name": "Bonnevoie", "lat": 49.599, "lon": 6.141},
-            {"name": "Cents", "lat": 49.619, "lon": 6.164},
-            {"name": "Clausen", "lat": 49.614, "lon": 6.142},
-            {"name": "Grund", "lat": 49.610, "lon": 6.134},
-            {"name": "Pfaffenthal", "lat": 49.617, "lon": 6.133},
-            {"name": "Beggen", "lat": 49.643, "lon": 6.133},
-            {"name": "Hamm", "lat": 49.611, "lon": 6.168},
-            {"name": "Merl", "lat": 49.602, "lon": 6.101},
-            {"name": "Belair", "lat": 49.612, "lon": 6.110},
-            {"name": "Hollerich", "lat": 49.599, "lon": 6.119}
-        ]
-    },
-    {
-        "commune": "Hesperange",
-        "canton": "Luxembourg",
-        "is_city": False,
-        "localities": [
-            {"name": "Hesperange", "lat": 49.573, "lon": 6.152},
-            {"name": "Alzingen", "lat": 49.568, "lon": 6.162},
-            {"name": "Fentange", "lat": 49.564, "lon": 6.144}
-        ]
-    },
-    {
-        "commune": "Strassen",
-        "canton": "Luxembourg",
-        "is_city": False,
-        "localities": [
-            {"name": "Strassen", "lat": 49.620, "lon": 6.073}
-        ]
-    },
-
-    # --- CANTON D'ESCH-SUR-ALZETTE (Gutland) ---
-    {
-        "commune": "Esch-sur-Alzette",
-        "canton": "Esch-sur-Alzette",
-        "is_city": True, # Ville officielle 9/12
-        "localities": [
-            {"name": "Esch-sur-Alzette", "lat": 49.497, "lon": 5.981},
-            {"name": "Belval", "lat": 49.502, "lon": 5.928},
-            {"name": "Lallange", "lat": 49.510, "lon": 5.990},
-            {"name": "Sommet", "lat": 49.490, "lon": 5.980}
-        ]
-    },
-    {
-        "commune": "Differdange",
-        "canton": "Esch-sur-Alzette",
-        "is_city": True, # Ville officielle 10/12
-        "localities": [
-            {"name": "Differdange", "lat": 49.524, "lon": 5.891},
-            {"name": "Niederkorn", "lat": 49.537, "lon": 5.892},
-            {"name": "Oberkorn", "lat": 49.514, "lon": 5.894},
-            {"name": "Lasauvage", "lat": 49.513, "lon": 5.845}
-        ]
-    },
-    {
-        "commune": "Dudelange",
-        "canton": "Esch-sur-Alzette",
-        "is_city": True, # Ville officielle 11/12
-        "localities": [
-            {"name": "Dudelange", "lat": 49.481, "lon": 6.084},
-            {"name": "Burange", "lat": 49.492, "lon": 6.083}
-        ]
-    },
-    {
-        "commune": "Rumelange",
-        "canton": "Esch-sur-Alzette",
-        "is_city": True, # Ville officielle 12/12
-        "localities": [
-            {"name": "Rumelange", "lat": 49.460, "lon": 6.031}
-        ]
-    },
-    {
-        "commune": "Bettembourg",
-        "canton": "Esch-sur-Alzette",
-        "is_city": False,
-        "localities": [
-            {"name": "Bettembourg", "lat": 49.518, "lon": 6.103},
-            {"name": "Noertzange", "lat": 49.511, "lon": 6.059}
-        ]
-    },
-    {
-        "commune": "Sanem",
-        "canton": "Esch-sur-Alzette",
-        "is_city": False,
-        "localities": [
-            {"name": "Sanem", "lat": 49.548, "lon": 5.930},
-            {"name": "Belvaux", "lat": 49.511, "lon": 5.928},
-            {"name": "Soleuvre", "lat": 49.525, "lon": 5.941}
-        ]
-    },
-    {
-        "commune": "Pétange",
-        "canton": "Esch-sur-Alzette",
-        "is_city": False,
-        "localities": [
-            {"name": "Pétange", "lat": 49.556, "lon": 5.875},
-            {"name": "Rodange", "lat": 49.546, "lon": 5.841}
-        ]
-    },
-
-    # --- CANTON DE CAPELLEN (Gutland) ---
-    {
-        "commune": "Mamer",
-        "canton": "Capellen",
-        "is_city": False,
-        "localities": [
-            {"name": "Mamer", "lat": 49.627, "lon": 6.024},
-            {"name": "Capellen", "lat": 49.645, "lon": 5.990}
-        ]
-    },
-    {
-        "commune": "Steinfort",
-        "canton": "Capellen",
-        "is_city": False,
-        "localities": [
-            {"name": "Steinfort", "lat": 49.661, "lon": 5.914}
-        ]
-    },
-
-    # --- CANTON DE MERSCH (Gutland) ---
-    {
-        "commune": "Mersch",
-        "canton": "Mersch",
-        "is_city": False,
-        "localities": [
-            {"name": "Mersch", "lat": 49.749, "lon": 6.106},
-            {"name": "Rollingen", "lat": 49.739, "lon": 6.113},
-            {"name": "Beringen", "lat": 49.757, "lon": 6.118}
-        ]
-    },
-
-    # --- CANTON DE REDANGE (Gutland) ---
-    {
-        "commune": "Redange-sur-Attert",
-        "canton": "Redange",
-        "is_city": False,
-        "localities": [
-            {"name": "Redange-sur-Attert", "lat": 49.765, "lon": 5.890}
-        ]
-    }
-]
+# Rétrocompatibilité pour les imports existants
+LUX_REGIONS = GEO_REGIONS
+LUX_CANTONS = GEO_CANTONS
+LUX_COMMUNES_AND_LOCALITIES = GEO_COMMUNES_AND_LOCALITIES
 
 # Table de correspondance rapide en mémoire (nom en minuscule -> région naturelle)
 _CITY_TO_REGION_CACHE = {}
@@ -500,39 +180,47 @@ def get_luxembourg_hierarchy(query: str, db: Optional[Session] = None) -> Option
 
 def seed_luxembourg_geography(db: Session):
     """
-    Peuple les tables PostGIS : regions, cantons, communes, localities.
-    Met également à jour les parcelles existantes au Luxembourg avec region_natural et canton.
+    Peuple les tables PostGIS : regions, cantons, communes, localities
+    pour le Luxembourg et Madagascar (Région Diana).
+    Met également à jour les parcelles existantes avec region_natural et canton.
     Idempotent : ne duplique pas si déjà existant.
     """
-    logger.info("Ensemencement de la géographie administrative du Luxembourg...")
+    logger.info("Ensemencement de la géographie administrative (Luxembourg & Madagascar - Diana)...")
 
     # 1. Régions
     region_objs = {}
-    for r_data in LUX_REGIONS:
+    for r_data in GEO_REGIONS:
         reg = db.query(Region).filter(Region.name == r_data["name"]).first()
         if not reg:
-            reg = Region(name=r_data["name"])
+            reg = Region(name=r_data["name"], country=r_data.get("country", "LUX"))
             db.add(reg)
             db.flush()
+        else:
+            if not getattr(reg, "country", None):
+                reg.country = r_data.get("country", "LUX")
         region_objs[r_data["name"]] = reg
 
-    # 2. Cantons
+    # 2. Cantons / Districts
     canton_objs = {}
-    for c_data in LUX_CANTONS:
+    for c_data in GEO_CANTONS:
         cant = db.query(Canton).filter(Canton.name == c_data["name"]).first()
         reg_parent = region_objs.get(c_data["region"])
+        c_country = c_data.get("country", "LUX")
         if not cant and reg_parent:
-            cant = Canton(name=c_data["name"], region_id=reg_parent.id)
+            cant = Canton(name=c_data["name"], region_id=reg_parent.id, country=c_country)
             db.add(cant)
             db.flush()
+        elif cant and not getattr(cant, "country", None):
+            cant.country = c_country
         canton_objs[c_data["name"]] = cant
 
     # 3. Communes et Localités
-    for comm_data in LUX_COMMUNES_AND_LOCALITIES:
+    for comm_data in GEO_COMMUNES_AND_LOCALITIES:
         cant_parent = canton_objs.get(comm_data["canton"])
         if not cant_parent:
             continue
 
+        comm_country = comm_data.get("country", "LUX")
         comm = db.query(Commune).filter(
             Commune.name == comm_data["commune"],
             Commune.canton_id == cant_parent.id
@@ -542,10 +230,15 @@ def seed_luxembourg_geography(db: Session):
             comm = Commune(
                 name=comm_data["commune"],
                 canton_id=cant_parent.id,
-                is_city=comm_data["is_city"]
+                is_city=comm_data["is_city"],
+                country=comm_country
             )
             db.add(comm)
             db.flush()
+        else:
+            if not getattr(comm, "country", None):
+                comm.country = comm_country
+            comm.is_city = comm_data["is_city"]
 
         for loc_data in comm_data["localities"]:
             loc = db.query(Locality).filter(
@@ -558,27 +251,101 @@ def seed_luxembourg_geography(db: Session):
                     name=loc_data["name"],
                     commune_id=comm.id,
                     latitude=loc_data["lat"],
-                    longitude=loc_data["lon"]
+                    longitude=loc_data["lon"],
+                    country=comm_country
                 )
                 db.add(loc)
+            else:
+                loc.latitude = loc_data["lat"]
+                loc.longitude = loc_data["lon"]
+                if not getattr(loc, "country", None):
+                    loc.country = comm_country
 
     db.commit()
 
     # 4. Mise à jour des parcelles existantes avec canton et region_natural
-    lux_parcels = db.query(Parcel).filter(Parcel.country == "LUX").all()
-    for p in lux_parcels:
-        reg_nat = get_region_from_city(p.name or "") or ("Oesling" if p.latitude > 49.90 else "Gutland")
-        cant_name = "Canton de Clervaux" if reg_nat == "Oesling" else ("Canton d'Esch-sur-Alzette" if p.latitude < 49.55 else "Canton de Luxembourg")
-        
-        if "esch" in (p.name or "").lower():
-            cant_name = "Canton d'Esch-sur-Alzette"
-            reg_nat = "Gutland"
-        elif "luxembourg" in (p.name or "").lower():
-            cant_name = "Canton de Luxembourg"
-            reg_nat = "Gutland"
+    all_parcels = db.query(Parcel).all()
+    for p in all_parcels:
+        if p.country == "MDG":
+            p.region_natural = "Diana"
+            if "ambilobe" in (p.name or "").lower():
+                p.canton = "District d'Ambilobe"
+            elif "ambanja" in (p.name or "").lower():
+                p.canton = "District d'Ambanja"
+            elif "nosy be" in (p.name or "").lower() or "hell-ville" in (p.name or "").lower():
+                p.canton = "District de Nosy Be"
+            else:
+                p.canton = "District d'Antsiranana I"
+        else:
+            reg_nat = get_region_from_city(p.name or "") or ("Oesling" if (p.latitude or 0) > 49.90 else "Gutland")
+            cant_name = "Canton de Clervaux" if reg_nat == "Oesling" else ("Canton d'Esch-sur-Alzette" if (p.latitude or 0) < 49.55 else "Canton de Luxembourg")
+            
+            if "esch" in (p.name or "").lower():
+                cant_name = "Canton d'Esch-sur-Alzette"
+                reg_nat = "Gutland"
+            elif "luxembourg" in (p.name or "").lower():
+                cant_name = "Canton de Luxembourg"
+                reg_nat = "Gutland"
 
-        p.region_natural = reg_nat
-        p.canton = cant_name
+            p.region_natural = reg_nat
+            p.canton = cant_name
 
     db.commit()
-    logger.info("Géographie administrative du Luxembourg ensemencée avec succès.")
+    logger.info("Géographie administrative (Luxembourg & Madagascar - Diana) ensemencée avec succès.")
+
+
+def get_all_locations_data(db: Session) -> Dict[str, Any]:
+    """
+    Renvoie l'arbre géographique et la liste plate pour les dropdowns du frontend.
+    Endpoint: GET /api/locations
+    """
+    localities = db.query(Locality).join(Commune).join(Canton).join(Region).all()
+    
+    flat_list = []
+    for loc in localities:
+        comm = loc.commune
+        cant = comm.canton if comm else None
+        reg = cant.region if cant else None
+        c_code = getattr(loc, "country", None) or (reg.country if reg else "LUX")
+        
+        country_label = "Luxembourg" if c_code == "LUX" else "Madagascar (Diana)"
+        label = f"{loc.name} ({cant.name if cant else ''}, {reg.name if reg else ''} - {c_code})"
+        if getattr(comm, "is_city", False):
+            label = f"★ {label}"
+
+        flat_list.append({
+            "id": loc.id,
+            "name": loc.name,
+            "commune": comm.name if comm else "",
+            "canton": cant.name if cant else "",
+            "region": reg.name if reg else "",
+            "country": c_code,
+            "country_label": country_label,
+            "is_city": getattr(comm, "is_city", False),
+            "latitude": loc.latitude,
+            "longitude": loc.longitude,
+            "label": label
+        })
+
+    # Tri : Villes d'abord, puis par pays et nom alphabétique
+    flat_list.sort(key=lambda x: (x["country"], not x["is_city"], x["name"]))
+
+    # Arborescence par pays
+    countries = [
+        {
+            "code": "LUX",
+            "name": "Luxembourg",
+            "regions": ["Oesling", "Gutland"]
+        },
+        {
+            "code": "MDG",
+            "name": "Madagascar (Diana)",
+            "regions": ["Diana"]
+        }
+    ]
+
+    return {
+        "total": len(flat_list),
+        "countries": countries,
+        "locations": flat_list
+    }

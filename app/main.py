@@ -1061,6 +1061,20 @@ def get_llm_audit_logs(
         for log in logs
     ]
 
+@router.get("/locations", tags=["Geography"])
+def get_locations(country: Optional[str] = None, db: Session = Depends(get_db)):
+    """
+    Récupère le référentiel géographique complet (communes et localités)
+    du Luxembourg et de Madagascar (Diana) pour les menus déroulants du frontend.
+    """
+    from app.luxembourg_geo import get_all_locations_data
+    data = get_all_locations_data(db)
+    if country:
+        c_upper = country.upper()
+        data["locations"] = [loc for loc in data["locations"] if loc["country"] == c_upper]
+        data["total"] = len(data["locations"])
+    return data
+
 # Include router both at root / and with /api prefix
 app.include_router(router)
 app.include_router(router, prefix="/api")

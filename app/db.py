@@ -38,7 +38,7 @@ def init_db():
             pass
     Base.metadata.create_all(bind=engine)
 
-    # Safe column additions on existing parcels and plants tables
+    # Safe column additions on existing tables
     try:
         with engine.connect() as conn:
             from sqlalchemy import text
@@ -50,6 +50,10 @@ def init_db():
                 conn.execute(text("ALTER TABLE plants ADD COLUMN IF NOT EXISTS yield_t_ha FLOAT DEFAULT 4.0;"))
                 conn.execute(text("ALTER TABLE plants ADD COLUMN IF NOT EXISTS price_eur_t FLOAT DEFAULT 250.0;"))
                 conn.execute(text("ALTER TABLE plants ADD COLUMN IF NOT EXISTS input_cost_eur_ha FLOAT DEFAULT 600.0;"))
+                conn.execute(text("ALTER TABLE regions ADD COLUMN IF NOT EXISTS country VARCHAR(10) DEFAULT 'LUX';"))
+                conn.execute(text("ALTER TABLE cantons ADD COLUMN IF NOT EXISTS country VARCHAR(10) DEFAULT 'LUX';"))
+                conn.execute(text("ALTER TABLE communes ADD COLUMN IF NOT EXISTS country VARCHAR(10) DEFAULT 'LUX';"))
+                conn.execute(text("ALTER TABLE localities ADD COLUMN IF NOT EXISTS country VARCHAR(10) DEFAULT 'LUX';"))
                 conn.commit()
             else:
                 # SQLite PRAGMA check on parcels
@@ -73,6 +77,16 @@ def init_db():
                     conn.execute(text("ALTER TABLE plants ADD COLUMN price_eur_t FLOAT DEFAULT 250.0;"))
                 if "input_cost_eur_ha" not in col_names_pl:
                     conn.execute(text("ALTER TABLE plants ADD COLUMN input_cost_eur_ha FLOAT DEFAULT 600.0;"))
+
+                # SQLite PRAGMA check on geo tables
+                for tbl in ["regions", "cantons", "communes", "localities"]:
+                    try:
+                        res_g = conn.execute(text(f"PRAGMA table_info({tbl});")).fetchall()
+                        col_names_g = [r[1] for r in res_g]
+                        if "country" not in col_names_g:
+                            conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN country VARCHAR(10) DEFAULT 'LUX';"))
+                    except Exception:
+                        pass
                 conn.commit()
     except Exception:
         pass

@@ -385,22 +385,24 @@ class FederatedRound(Base):
 # =====================================================================
 
 class Region(Base):
-    """Région naturelle (Oesling, Gutland)"""
+    """Région naturelle (Oesling, Gutland, Diana...)"""
     __tablename__ = "regions"
 
     id = IdColumn()
     name = Column(String(100), unique=True, nullable=False, index=True)
+    country = Column(String(10), default="LUX", nullable=True, index=True) # LUX, MDG
 
     cantons = relationship("Canton", back_populates="region", cascade="all, delete-orphan")
 
 
 class Canton(Base):
-    """Canton administratif du Luxembourg (12 cantons)"""
+    """Canton administratif du Luxembourg (12 cantons) ou District de Madagascar"""
     __tablename__ = "cantons"
 
     id = IdColumn()
     name = Column(String(100), nullable=False, index=True)
     region_id = Column(String(36), ForeignKey("regions.id"), nullable=False)
+    country = Column(String(10), default="LUX", nullable=True, index=True)
 
     region = relationship("Region", back_populates="cantons")
     communes = relationship("Commune", back_populates="canton", cascade="all, delete-orphan")
@@ -414,6 +416,7 @@ class Commune(Base):
     name = Column(String(100), nullable=False, index=True)
     canton_id = Column(String(36), ForeignKey("cantons.id"), nullable=False)
     is_city = Column(Boolean, default=False, nullable=False)
+    country = Column(String(10), default="LUX", nullable=True, index=True)
 
     canton = relationship("Canton", back_populates="communes")
     localities = relationship("Locality", back_populates="commune", cascade="all, delete-orphan")
@@ -428,5 +431,6 @@ class Locality(Base):
     commune_id = Column(String(36), ForeignKey("communes.id"), nullable=False)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    country = Column(String(10), default="LUX", nullable=True, index=True)
 
     commune = relationship("Commune", back_populates="localities")

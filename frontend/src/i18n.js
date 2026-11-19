@@ -5,18 +5,18 @@ import fr from './locales/fr.json';
 import en from './locales/en.json';
 import mg from './locales/mg.json';
 
-const savedLang = localStorage.getItem('terralux_lang') || 'fr';
+const savedLang = localStorage.getItem('terralux_lang') || 'en';
 
 i18n
   .use(initReactI18next)
   .init({
     resources: {
-      fr: { translation: fr },
       en: { translation: en },
+      fr: { translation: fr },
       mg: { translation: mg },
     },
     lng: savedLang,
-    fallbackLng: 'fr',
+    fallbackLng: 'en',
     interpolation: {
       escapeValue: false,
     },

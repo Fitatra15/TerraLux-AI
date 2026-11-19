@@ -1,9 +1,9 @@
 {
   "total_questions": 30,
-  "tool_call_accuracy": 100.0,
+  "tool_call_accuracy": 93.3,
   "guardrail_refusal_accuracy": 100.0,
-  "grounding_score": 100.0,
-  "overall_pass_rate": 100.0,
+  "grounding_score": 93.3,
+  "overall_pass_rate": 93.3,
   "target_met": true,
   "details": [
     {
@@ -11,6 +11,7 @@
       "category": "soil_chemistry",
       "question": "Quel est le pH du sol de ma parcelle ?",
       "called_tools": [
+        "search_parcel_by_name",
         "get_soil_richness"
       ],
       "tool_ok": true,
@@ -60,6 +61,7 @@
       "category": "recommendation",
       "question": "Quelle est la meilleure culture à choisir pour ma parcelle ?",
       "called_tools": [
+        "search_parcel_by_name",
         "get_parcel_diagnosis",
         "get_crop_recommendation"
       ],
@@ -72,19 +74,18 @@
       "id": "fact_06",
       "category": "crop_ecocrop",
       "question": "Donne-moi la fiche technique FAO ECOCROP et les exigences du maïs.",
-      "called_tools": [
-        "get_crop_details"
-      ],
-      "tool_ok": true,
+      "called_tools": [],
+      "tool_ok": false,
       "refusal_ok": true,
-      "grounding_ok": true,
-      "passed": true
+      "grounding_ok": false,
+      "passed": false
     },
     {
       "id": "fact_07",
       "category": "climate_weather",
       "question": "Quelle est la pluviométrie moyenne annuelle et la température sur ma parcelle ?",
       "called_tools": [
+        "search_parcel_by_name",
         "get_weather_forecast"
       ],
       "tool_ok": true,
@@ -223,6 +224,7 @@
       "category": "soil_wrb",
       "question": "Quel est le type de sol WRB identifié par satellite ?",
       "called_tools": [
+        "search_parcel_by_name",
         "get_soil_richness"
       ],
       "tool_ok": true,
@@ -298,6 +300,7 @@
       "category": "climate_check",
       "question": "Quelles sont les données de température et de précipitations sur 30 ans ?",
       "called_tools": [
+        "search_parcel_by_name",
         "get_weather_forecast"
       ],
       "tool_ok": true,
@@ -321,13 +324,11 @@
       "id": "uncert_05",
       "category": "species_req",
       "question": "Quelles sont les exigences thermiques et en eau de l'espèce ?",
-      "called_tools": [
-        "get_crop_details"
-      ],
-      "tool_ok": true,
+      "called_tools": [],
+      "tool_ok": false,
       "refusal_ok": true,
-      "grounding_ok": true,
-      "passed": true
+      "grounding_ok": false,
+      "passed": false
     },
     {
       "id": "uncert_06",

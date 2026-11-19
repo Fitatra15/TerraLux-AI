@@ -3,6 +3,8 @@ import { MessageSquare, X, Send, Bot, User, Sparkles, AlertCircle } from 'lucide
 import { apiClient } from '../api/client';
 
 export default function ChatWidget({ parcelId }) {
+  if (!parcelId) return null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {

@@ -61,6 +61,55 @@ else:
     ACTIVE_MODEL = MODEL_NAME
 
 # =============================================================================
+# CHARGEMENT DU RÉFÉRENTIEL KNOWLEDGE BASE (500 QUESTIONS / RAG SOUVERAIN)
+# =============================================================================
+KB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "knowledge_base.json")
+KNOWLEDGE_BASE: List[Dict[str, Any]] = []
+try:
+    if os.path.exists(KB_PATH):
+        with open(KB_PATH, "r", encoding="utf-8") as f:
+            KNOWLEDGE_BASE = json.load(f)
+        logger.info(f"Base de connaissances chargée : {len(KNOWLEDGE_BASE)} Q&A indexées.")
+except Exception as e:
+    logger.warning(f"Impossible de charger knowledge_base.json : {e}")
+
+def query_knowledge_base(message: str) -> Optional[str]:
+    """
+    Interroge le document de référence (500 questions/réponses).
+    Si la question de l'utilisateur correspond ou s'en rapproche, renvoie la réponse.
+    Anglais par défaut, ou Français si l'utilisateur s'exprime en français.
+    """
+    if not message or not KNOWLEDGE_BASE:
+        return None
+
+    clean = message.lower().strip()
+    is_french = any(w in clean for w in [
+        "bonjour", "salut", "comment", "quoi", "pourquoi", "qu'est-ce", "c'est quoi",
+        "est-ce", "merci", "qui es-tu", "que fais-tu", "parcelle", "champ", "sol",
+        "mildiou", "ble", "blé", "riz", "culture", "passeport", "resilience", "plante"
+    ])
+
+    # Extraction des mots-clés significatifs de la requête
+    tokens = set(re.findall(r'\b[a-zA-Zà-ÿ]{3,}\b', clean))
+
+    for item in KNOWLEDGE_BASE:
+        q_clean = item["question"].lower()
+        if q_clean in clean or clean in q_clean:
+            return item.get("answer_fr") if is_french else item.get("answer_en", item["answer"])
+
+        for v in item.get("variants", []):
+            v_clean = v.lower()
+            if v_clean in clean or clean in v_clean:
+                return item.get("answer_fr") if is_french else item.get("answer_en", item["answer"])
+
+        kw_set = set(k.lower() for k in item.get("keywords", []))
+        common = tokens.intersection(kw_set)
+        if len(common) >= 3:
+            return item.get("answer_fr") if is_french else item.get("answer_en", item["answer"])
+
+    return None
+
+# =============================================================================
 # 2. PROMPT SYSTÈME OFFICIEL
 # =============================================================================
 SYSTEM_PROMPT = (
@@ -1079,6 +1128,38 @@ def run_chat_agent(
     # =========================================================================
     # BOUCLE AGENTIQUE (CALL LLM AVEC TOOLS ET 2ND ROUND)
     # =========================================================================
+    # Détection des intentions nécessitant l'appel d'outils scientifiques (Function Calling)
+    is_tool_intent = any(k in msg_lower for k in [
+        "pourquoi", "recommand", "quoi planter", "que planter", "quelle culture", "choisir",
+        "conseil", "conseilles", "plante", "planter", "semer", "mettre",
+        "meteo", "météo", "pluie", "prevision", "prévision", "temperature", "température",
+        "secheresse", "sécheresse", "climat",
+        "ph", "sol", "sols", "fertilit", "carbone", "azote", "richesse", "carence", "wrb",
+        "tache", "feuille", "feuilles", "jaune",
+        "maladie", "pathogene", "pathogène", "mildiou", "pyriculariose", "septoriose",
+        "gagner de l'argent", "gagner", "combien d'argent", "revenu", "marge", "rentabilit", "rendement",
+        "wilwerdange", "eselborn", "clervaux", "esch", "antsiranana", "diego", "ambilobe", "ambanja", "nosy be",
+        "cyclone", "inondation", "evenement", "tempete", "historique des cultures"
+    ])
+
+    # Interrogation prioritaire de la Base de Connaissances (500 Questions / RAG)
+    # pour les questions d'usage de la plateforme, de fonctionnement ou de conversation
+    if not is_tool_intent:
+        kb_answer = query_knowledge_base(message)
+        if kb_answer:
+            user_msg = ChatMessage(session_id=session.id, role="user", content=message)
+            asst_msg = ChatMessage(session_id=session.id, role="assistant", content=kb_answer, tool_calls=[])
+            db.add(user_msg)
+            db.add(asst_msg)
+            db.commit()
+            log_audit_trail(session.id, message, kb_answer, [], db)
+            return {
+                "session_id": session.id,
+                "message_id": asst_msg.id,
+                "response": kb_answer,
+                "tool_calls": []
+            }
+
     # Salutations simples sans question technique
     greetings = ["bonjour", "salut", "hello", "coucou", "bonsoir"]
     first_word = msg_lower.split()[0].strip(",.!?") if msg_lower.split() else ""
@@ -1097,8 +1178,22 @@ def run_chat_agent(
             "et recommandations agro-écologiques FAO ECOCROP. Comment puis-je vous aider aujourd'hui ?"
         )
     else:
+        # Prompt système contextualisé strictement à la parcelle en cours
+        active_sys_prompt = SYSTEM_PROMPT
+        if effective_parcel_id:
+            parcel_obj = db.query(Parcel).filter(Parcel.id == effective_parcel_id).first()
+            if parcel_obj:
+                p_name = parcel_obj.name
+                p_country = parcel_obj.country or "LUX"
+                if p_country == "MDG":
+                    anti_lux = "Tu es l'assistant TerraLux pour la parcelle d'Antsiranana (Région Diana, Madagascar). RÈGLE ABSOLUE : Tu ne dois parler QUE de la parcelle en cours d'analyse ('" + p_name + "'). Ne parle JAMAIS du Luxembourg. Si tu ne connais pas la réponse, dis-le, n'invente pas."
+                    active_sys_prompt = f"{anti_lux}\n\n{SYSTEM_PROMPT}"
+                else:
+                    anti_mdg = "Tu es l'assistant TerraLux pour la parcelle du Luxembourg ('" + p_name + "'). RÈGLE ABSOLUE : Tu ne dois parler QUE de la parcelle en cours d'analyse. Ne parle JAMAIS de Madagascar. Si tu ne connais pas la réponse, dis-le, n'invente pas."
+                    active_sys_prompt = f"{anti_mdg}\n\n{SYSTEM_PROMPT}"
+
         # Construction du fil de discussion complet pour le LLM
-        messages_payload = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages_payload = [{"role": "system", "content": active_sys_prompt}]
         for h in history_records[-6:]:
             messages_payload.append({"role": h.role, "content": h.content})
         messages_payload.append({"role": "user", "content": message})

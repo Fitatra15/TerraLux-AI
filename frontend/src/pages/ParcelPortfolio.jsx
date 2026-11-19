@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { cachedGet, apiClient } from '../api/client';
 import RadialProgress from '../components/RadialProgress';
+import ParcelMapDrawer from '../components/ParcelMapDrawer';
 import { getNasaGibsTileUrl, NASA_GIBS_ATTRIBUTION } from '../utils/nasaGibs';
 
 const miniIcon = new L.DivIcon({
@@ -381,11 +382,11 @@ export default function ParcelPortfolio() {
       </div>
 
       {/* ======================================================== */}
-      {/* MODAL : Créer ma parcelle                                */}
+      {/* MODAL : Créer ma parcelle avec Carte Satellite NASA & GPS */}
       {/* ======================================================== */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-lg rounded-3xl glass-panel p-8 space-y-6 border border-white/20">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-3xl glass-panel p-6 sm:p-8 space-y-5 border border-white/20 my-8">
             <div className="space-y-1">
               <span className="text-[11px] font-mono text-emerald-400 uppercase tracking-widest">
                 {t('brand.tagline')}
@@ -397,6 +398,23 @@ export default function ParcelPortfolio() {
             </div>
 
             <form onSubmit={handleCreateParcel} className="space-y-4">
+              {/* Carte Interactive Leaflet + Satellite NASA GIBS + GPS + Polygone */}
+              <ParcelMapDrawer
+                latitude={newParcel.latitude}
+                longitude={newParcel.longitude}
+                areaHa={newParcel.area_ha}
+                country={newParcel.country}
+                onChange={(updates) => {
+                  setNewParcel((prev) => {
+                    const next = { ...prev, ...updates };
+                    if (updates.nameHint && !prev.name) {
+                      next.name = `Parcelle ${updates.nameHint}`;
+                    }
+                    return next;
+                  });
+                }}
+              />
+
               <div>
                 <label className="block text-xs font-mono text-slate-300 mb-1">{t('portfolio.parcel_name_label')}</label>
                 <input
@@ -418,7 +436,7 @@ export default function ParcelPortfolio() {
                     required
                     value={newParcel.latitude}
                     onChange={e => setNewParcel({ ...newParcel, latitude: parseFloat(e.target.value) })}
-                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-400"
                   />
                 </div>
                 <div>
@@ -429,21 +447,23 @@ export default function ParcelPortfolio() {
                     required
                     value={newParcel.longitude}
                     onChange={e => setNewParcel({ ...newParcel, longitude: parseFloat(e.target.value) })}
-                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-400"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-slate-300 mb-1">{t('portfolio.surface')}</label>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">
+                    {t('portfolio.surface')} (Auto-calculé par polygone)
+                  </label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     required
                     value={newParcel.area_ha}
                     onChange={e => setNewParcel({ ...newParcel, area_ha: parseFloat(e.target.value) })}
-                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-400"
                   />
                 </div>
                 <div>
@@ -451,7 +471,7 @@ export default function ParcelPortfolio() {
                   <select
                     value={newParcel.country}
                     onChange={e => setNewParcel({ ...newParcel, country: e.target.value })}
-                    className="w-full bg-[#0a1d15] border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-[#0a1d15] border border-white/15 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-400"
                   >
                     <option value="LUX">Luxembourg (Tempéré)</option>
                     <option value="MDG">Madagascar — Diana (Tropical)</option>
@@ -459,7 +479,7 @@ export default function ParcelPortfolio() {
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3">
+              <div className="pt-2 flex items-center justify-end gap-3 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}

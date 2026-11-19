@@ -38,7 +38,7 @@ export default function AboutPage() {
             {t('about.mission_title')}
           </span>
           <h2 className="text-2xl sm:text-3xl font-serif text-white font-bold tracking-tight">
-            Pont Technologique & Financier entre le Luxembourg et Madagascar
+            {t('about.subtitle')}
           </h2>
           <p className="text-sm text-slate-300 leading-relaxed font-light">
             {t('about.mission_text')}

@@ -12,7 +12,6 @@ import AboutPage from './pages/AboutPage';
 import Home from './pages/Home';
 import ParcelDetail from './pages/ParcelDetail';
 import Dashboard from './pages/Dashboard';
-import ChatWidget from './components/ChatWidget';
 
 export default function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -76,9 +75,6 @@ export default function App() {
           </footer>
 
         </div>
-
-        {/* Sovereign Floating Chatbot */}
-        <ChatWidget />
 
       </div>
     </BrowserRouter>

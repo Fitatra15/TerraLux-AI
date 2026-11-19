@@ -48,7 +48,7 @@
     "grade_aa": "Grade AA • Éligible au Passeport de Résilience",
     "grade_a": "Grade A • Éligible au Passeport de Résilience",
     "create_modal_title": "Créer un Actif Foncier",
-    "create_modal_desc": "La détection du pays, du climat trentenaire NASA POWER et du profil SoilGrids se fait automatiquement.",
+    "create_modal_desc": "Sélectionnez votre commune ou utilisez votre position GPS pour localiser et délimiter votre champ sur la carte satellite.",
     "parcel_name_label": "Nom du Domaine ou de la Parcelle",
     "parcel_name_placeholder": "ex: Domaine de la Sûre ou Parcelle Antsiranana",
     "latitude": "Latitude",
@@ -78,16 +78,16 @@
     "download_cta": "Télécharger le PDF Officiel Certifié"
   },
   "guides": {
-    "title": "Guides & Documentation Opérationnelle",
-    "subtitle": "Mode d'emploi interactif pour valoriser vos parcelles et certifier leur résilience financière.",
-    "step1_title": "1. Création & Cartographie de la Parcelle",
-    "step1_desc": "Renseignez le nom et les coordonnées GPS de votre exploitation. TerraLux AI interroge instantanément les satellites de la NASA et les capteurs mondiaux SoilGrids v2.",
-    "step2_title": "2. Diagnostic des Sols & Climatologie 30 ans",
-    "step2_desc": "Accédez aux propriétés physico-chimiques sur 3 profondeurs (0-5cm, 5-15cm, 15-30cm), aux données de texture (sable, limon, argile) et au calcul automatique de l'indice de richesse.",
-    "step3_title": "3. Diagnostic Multimodal par Photo (DINOv2)",
-    "step3_desc": "Prenez en photo une feuille suspecte depuis votre smartphone. Le modèle d'IA souverain identifie la pathologie et croise le diagnostic avec la météo locale.",
-    "step4_title": "4. Émission du Passeport de Résilience Certifié",
-    "step4_desc": "Générez un certificat vectoriel scellé par SHA-256 avec QR code de vérification publique pour accéder aux crédits bancaires et subventions climatiques."
+    "title": "User Guide (Guide d'utilisation)",
+    "subtitle": "Mode d'emploi interactif étape par étape pour valoriser vos parcelles et certifier leur résilience.",
+    "step1_title": "1. Créez votre parcelle.",
+    "step1_desc": "Renseignez le nom, sélectionnez votre commune dans le menu déroulant ou cliquez sur 'Utiliser ma position GPS', puis dessinez les contours de votre champ sur la carte satellite NASA pour calculer la surface automatiquement en hectares.",
+    "step2_title": "2. Obtenez le diagnostic de votre sol.",
+    "step2_desc": "Accédez aux propriétés physico-chimiques de votre parcelle modélisées par SoilGrids sur 3 profondeurs (pH, carbone organique, azote, capacité d'échange cationique CEC, fractions sable/limon/argile).",
+    "step3_title": "3. Recevez des recommandations de cultures.",
+    "step3_desc": "Le moteur agronomique croise le climat trentenaire NASA POWER et les caractéristiques pédologiques pour générer le Top 3 des cultures adaptées, avec estimation du rendement, des marges nettes et du risque d'inflation.",
+    "step4_title": "4. Générez votre Passeport de Résilience.",
+    "step4_desc": "Émettez un certificat cryptographique officiel scellé par SHA-256 et QR code, certifiant l'éligibilité de votre exploitation aux financements verts et aux prêts bancaires bonifiés."
   },
   "settings": {
     "title": "Préférences & Paramètres",
@@ -105,14 +105,14 @@
   },
   "about": {
     "title": "À Propos de TerraLux AI",
-    "subtitle": "L'infrastructure de confiance qui transforme la donnée spatiale en actif financier et agronomique.",
+    "subtitle": "TerraLux AI est un outil d'aide à la décision pour les agriculteurs et les gouvernements. Il utilise les données de la NASA et de SoilGrids pour certifier la résilience des parcelles.",
     "mission_title": "Notre Mission",
-    "mission_text": "Créée par l'équipe TerraLux, notre technologie répond au défi de la souveraineté alimentaire au Luxembourg et de la résilience climatique à Madagascar (Région Diana). Un moteur agronomique unique croise les données de la NASA et les capteurs pédologiques mondiaux.",
+    "mission_text": "TerraLux AI est un outil d'aide à la décision pour les agriculteurs et les gouvernements. Il utilise les données de la NASA et de SoilGrids pour certifier la résilience des parcelles. Notre technologie répond aux défis de souveraineté alimentaire au Luxembourg et de résilience climatique à Madagascar (Région Diana).",
     "team_title": "L'Équipe TerraLux",
     "team_text": "Une équipe pluridisciplinaire d'ingénieurs agronomes, de data scientists et d'experts en finance climatique engagés pour une agriculture durable et souveraine.",
     "science_title": "Nos Sources Scientifiques Vérifiées",
-    "science_nasa": "NASA POWER : Séries temporelles d'ensoleillement, températures et précipitations sur 30 ans.",
-    "science_soil": "ISRIC SoilGrids : Profils pédologiques multi-profondeurs (argile, pH, matière organique, CEC).",
-    "science_fao": "FAO ECOCROP : Règles agronomiques écologiques certifiées pour 18 espèces tempérées et tropicales."
+    "science_nasa": "NASA POWER & NASA GIBS : Séries temporelles trentenaires et imagerie satellite TrueColor.",
+    "science_soil": "ISRIC SoilGrids : Profils pédologiques multi-profondeurs calibrés (argile, pH, carbone organique, CEC).",
+    "science_fao": "FAO ECOCROP : Règles agronomiques écologiques certifiées pour les espèces tempérées et tropicales."
   }
 }

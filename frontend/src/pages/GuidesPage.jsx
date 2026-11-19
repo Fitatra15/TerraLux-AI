@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
-  BookOpen, MapPin, Activity, Camera, Award, 
+  BookOpen, MapPin, Activity, Sprout, Award, 
   ChevronDown, ChevronUp, CheckCircle2, ArrowRight 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -16,7 +16,7 @@ export default function GuidesPage() {
       title: t('guides.step1_title'),
       desc: t('guides.step1_desc'),
       icon: MapPin,
-      badge: "Cadastre Spatial",
+      badge: "Cadastre & GPS NASA",
       color: "text-emerald-400",
       cta: { text: t('actions.add_parcel'), to: '/' }
     },
@@ -33,17 +33,17 @@ export default function GuidesPage() {
       step: 3,
       title: t('guides.step3_title'),
       desc: t('guides.step3_desc'),
-      icon: Camera,
-      badge: "Vision DINOv2",
+      icon: Sprout,
+      badge: "FAO ECOCROP & Marges",
       color: "text-amber-400",
-      cta: { text: t('actions.upload_photo'), to: '/parcel/845ef4e9-b776-40b4-af77-c84510862b1e' }
+      cta: { text: t('actions.view_details'), to: '/parcel/845ef4e9-b776-40b4-af77-c84510862b1e' }
     },
     {
       step: 4,
       title: t('guides.step4_title'),
       desc: t('guides.step4_desc'),
       icon: Award,
-      badge: "Éligible au Passeport de Résilience",
+      badge: "Certification SHA-256",
       color: "text-emerald-300",
       cta: { text: t('actions.view_passport'), to: '/passport' }
     }
