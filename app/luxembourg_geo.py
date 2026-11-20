@@ -114,14 +114,27 @@ def get_region_from_city(city_or_locality: str) -> Optional[str]:
 
 def get_luxembourg_hierarchy(query: str, db: Optional[Session] = None) -> Optional[Dict[str, Any]]:
     """
-    Renvoie la hiérarchie administrative et agronomique complète pour une localité/commune.
+    Renvoie la hiérarchie administrative et agronomique complète pour une localité/commune STRICTEMENT luxembourgeoise.
     Exemple: Wilwerdange -> Commune Troisvierges, Canton Clervaux, Région Oesling.
+    Ne renvoie JAMAIS de localités malgaches.
     """
     clean_q = query.strip().lower() if query else ""
+    if not clean_q:
+        return None
 
-    # Recherche directe en base de données si session DB disponible
+    # Recherche directe en base de données restreinte à LUXEMBOURG (country == 'LUX')
     if db:
-        loc = db.query(Locality).filter(Locality.name.ilike(f"%{clean_q}%")).first()
+        loc = (
+            db.query(Locality)
+            .join(Commune)
+            .join(Canton)
+            .join(Region)
+            .filter(
+                Region.country == "LUX",
+                Locality.name.ilike(f"%{clean_q}%")
+            )
+            .first()
+        )
         if loc and loc.commune:
             comm = loc.commune
             cant = comm.canton
@@ -131,15 +144,19 @@ def get_luxembourg_hierarchy(query: str, db: Optional[Session] = None) -> Option
                 "commune": comm.name,
                 "canton": cant.name if cant else "Clervaux",
                 "region_natural": reg.name if reg else "Oesling",
+                "country": "LUX",
                 "is_city": comm.is_city,
                 "latitude": loc.latitude,
                 "longitude": loc.longitude,
-                "soil_type": "Sols schisteux et quartziteux (Oesling)" if (reg and reg.name == "Oesling") else "Sols marno-calcaires profonds (Gutland)",
+                "soil_type": "Cambisol calcaro-eutrique" if (reg and reg.name == "Gutland") else "Cambisol squelettique schisteux (Oesling)",
                 "climate_note": "Climat ardennais frais" if (reg and reg.name == "Oesling") else "Climat tempéré de plaine"
             }
 
-    # Fallback in-memory
+    # Fallback in-memory STRICTEMENT pour le Luxembourg
+    lux_canton_names = {c["name"] for c in GEO_CANTONS if c.get("country") == "LUX"}
     for item in LUX_COMMUNES_AND_LOCALITIES:
+        if item.get("canton") not in lux_canton_names:
+            continue
         c_name = item["commune"]
         cant_name = item["canton"]
         reg_name = get_region_from_city(cant_name) or "Gutland"
@@ -150,15 +167,17 @@ def get_luxembourg_hierarchy(query: str, db: Optional[Session] = None) -> Option
                     "commune": c_name,
                     "canton": cant_name,
                     "region_natural": reg_name,
-                    "is_city": item["is_city"],
+                    "country": "LUX",
+                    "is_city": item.get("is_city", False),
                     "latitude": l["lat"],
                     "longitude": l["lon"],
-                    "soil_type": "Sols schisteux et quartziteux (Oesling)" if reg_name == "Oesling" else "Sols marno-calcaires profonds (Gutland)",
+                    "soil_type": "Cambisol calcaro-eutrique" if reg_name == "Gutland" else "Cambisol squelettique schisteux (Oesling)",
                     "climate_note": "Climat ardennais frais" if reg_name == "Oesling" else "Climat tempéré de plaine"
                 }
 
-    # Si la recherche est sur le nom de commune
     for item in LUX_COMMUNES_AND_LOCALITIES:
+        if item.get("canton") not in lux_canton_names:
+            continue
         if item["commune"].lower() in clean_q:
             cant_name = item["canton"]
             reg_name = get_region_from_city(cant_name) or "Gutland"
@@ -168,14 +187,97 @@ def get_luxembourg_hierarchy(query: str, db: Optional[Session] = None) -> Option
                 "commune": item["commune"],
                 "canton": cant_name,
                 "region_natural": reg_name,
-                "is_city": item["is_city"],
+                "country": "LUX",
+                "is_city": item.get("is_city", False),
                 "latitude": main_loc["lat"],
                 "longitude": main_loc["lon"],
-                "soil_type": "Sols schisteux et quartziteux (Oesling)" if reg_name == "Oesling" else "Sols marno-calcaires profonds (Gutland)",
+                "soil_type": "Cambisol calcaro-eutrique" if reg_name == "Gutland" else "Cambisol squelettique schisteux (Oesling)",
                 "climate_note": "Climat ardennais frais" if reg_name == "Oesling" else "Climat tempéré de plaine"
             }
 
     return None
+
+
+def get_madagascar_hierarchy(query: str, db: Optional[Session] = None) -> Optional[Dict[str, Any]]:
+    """
+    Renvoie la hiérarchie administrative et agronomique complète pour une commune/localité de Madagascar (Diana).
+    Exemple: Mangaoka -> District Antsiranana II, Région Diana, Sol Ferralsol.
+    """
+    clean_q = query.strip().lower() if query else ""
+    if not clean_q:
+        return None
+
+    if db:
+        loc = (
+            db.query(Locality)
+            .join(Commune)
+            .join(Canton)
+            .join(Region)
+            .filter(
+                Region.country == "MDG",
+                Locality.name.ilike(f"%{clean_q}%")
+            )
+            .first()
+        )
+        if loc and loc.commune:
+            comm = loc.commune
+            cant = comm.canton
+            reg = cant.region if cant else None
+            return {
+                "locality": loc.name,
+                "commune": comm.name,
+                "canton": f"District d'{cant.name}" if cant and not cant.name.startswith("District") else (cant.name if cant else "District d'Antsiranana II"),
+                "district": cant.name if cant else "Antsiranana II",
+                "region_natural": "Diana",
+                "country": "MDG",
+                "is_city": comm.is_city,
+                "latitude": loc.latitude,
+                "longitude": loc.longitude,
+                "soil_type": "Ferralsol rhodi-lixique",
+                "climate_note": "Climat tropical de mousson à saison sèche marquée"
+            }
+
+    # Fallback in-memory pour Madagascar
+    mdg_canton_names = {c["name"] for c in GEO_CANTONS if c.get("country") == "MDG"}
+    for item in LUX_COMMUNES_AND_LOCALITIES:
+        if item.get("canton") not in mdg_canton_names:
+            continue
+        c_name = item["commune"]
+        cant_name = item["canton"]
+        for l in item["localities"]:
+            if l["name"].lower() in clean_q or clean_q in l["name"].lower():
+                return {
+                    "locality": l["name"],
+                    "commune": c_name,
+                    "canton": f"District d'{cant_name}" if not cant_name.startswith("District") else cant_name,
+                    "district": cant_name,
+                    "region_natural": "Diana",
+                    "country": "MDG",
+                    "is_city": item.get("is_city", False),
+                    "latitude": l["lat"],
+                    "longitude": l["lon"],
+                    "soil_type": "Ferralsol rhodi-lixique",
+                    "climate_note": "Climat tropical chaud et humide"
+                }
+
+    return None
+
+
+def get_territorial_hierarchy(query: str, lat: Optional[float] = None, lon: Optional[float] = None, db: Optional[Session] = None) -> Optional[Dict[str, Any]]:
+    """
+    Détermine la hiérarchie appropriée en fonction des coordonnées GPS ou de la requête textuelle.
+    """
+    if lat is not None:
+        if lat < 0:
+            return get_madagascar_hierarchy(query, db)
+        elif lat > 45:
+            return get_luxembourg_hierarchy(query, db)
+
+    # Si pas de coordonnées, tester Madagascar puis Luxembourg
+    mdg = get_madagascar_hierarchy(query, db)
+    if mdg:
+        return mdg
+    return get_luxembourg_hierarchy(query, db)
 
 
 def seed_luxembourg_geography(db: Session):

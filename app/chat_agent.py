@@ -93,18 +93,26 @@ def query_knowledge_base(message: str) -> Optional[str]:
     tokens = set(re.findall(r'\b[a-zA-Zà-ÿ]{3,}\b', clean))
 
     for item in KNOWLEDGE_BASE:
-        q_clean = item["question"].lower()
-        if q_clean in clean or clean in q_clean:
+        q_clean = item["question"].lower().strip()
+        if q_clean == clean or (len(q_clean) >= 15 and q_clean in clean):
             return item.get("answer_fr") if is_french else item.get("answer_en", item["answer"])
 
-        for v in item.get("variants", []):
-            v_clean = v.lower()
-            if v_clean in clean or clean in v_clean:
+        raw_variants = item.get("variants", [])
+        if isinstance(raw_variants, str):
+            raw_variants = [raw_variants]
+        elif not isinstance(raw_variants, list):
+            raw_variants = []
+
+        for v in raw_variants:
+            if not isinstance(v, str):
+                continue
+            v_clean = v.lower().strip()
+            if len(v_clean) >= 8 and (v_clean == clean or (len(v_clean) >= 18 and v_clean in clean)):
                 return item.get("answer_fr") if is_french else item.get("answer_en", item["answer"])
 
-        kw_set = set(k.lower() for k in item.get("keywords", []))
+        kw_set = set(k.lower() for k in item.get("keywords", []) if isinstance(k, str) and len(k) >= 3)
         common = tokens.intersection(kw_set)
-        if len(common) >= 3:
+        if len(common) >= 3 and len(tokens) <= 6:
             return item.get("answer_fr") if is_french else item.get("answer_en", item["answer"])
 
     return None
@@ -113,39 +121,19 @@ def query_knowledge_base(message: str) -> Optional[str]:
 # 2. PROMPT SYSTÈME OFFICIEL
 # =============================================================================
 SYSTEM_PROMPT = (
-    "You are an intelligent assistant of TerraLux AI. You must NEVER use pre-defined lists. "
-    "If asked what to plant or which tree to use, you MUST use search_web_tavily to find recent, true data, then cross-reference with soil data.\n\n"
-    "Tu es un assistant agronomique et économique de TerraLux AI. Tu discutes avec un agriculteur ou un décideur. "
-    "Ton but est de l'aider à comprendre sa parcelle, son sol, sa météo, ses cultures et la rentabilité de son exploitation.\n\n"
-    "RÈGLES DE COMPORTEMENT / BEHAVIOR RULES :\n"
-    "- You are natural, warm, and educational. You never answer like a rigid robot.\n"
-    "- Zero hardcoded lists: When asked for trees, crops or trends, search recent web data via Tavily and cross-reference with SoilGrids.\n"
-    "- Quand tu recommandes une culture, tu dois TOUJOURS préciser : "
-    "(1) le rendement attendu en t/ha pour la surface de l'utilisateur, "
-    "(2) le revenu brut estimé en euros ou en ariary, "
-    "(3) le niveau de risque (faible/moyen/élevé) lié à la volatilité des prix et aux coûts des intrants. "
-    "Si le risque est élevé, propose une alternative plus sûre. Cite tes sources (données 2025-2026 du Luxembourg ou de Madagascar).\n"
-    "- Si l'utilisateur mentionne le nom d'une parcelle ou d'une ville (ex: 'Antsiranana', 'Luxembourg-ville', 'Esch-sur-Alzette', 'Nosy Be'), "
-    "tu dois D'ABORD appeler l'outil search_parcel_by_name pour trouver le bon parcel_id. Ensuite, utilise ce parcel_id pour appeler "
-    "les autres outils (calculate_expected_yield, assess_market_risk, get_parcel_diagnosis, get_crop_recommendation, get_weather_forecast, get_soil_richness). Ne devine jamais la parcelle.\n"
-    "- Tu connais parfaitement la géographie administrative du Luxembourg. Si un utilisateur mentionne une localité (ex: 'Eselborn'), "
-    "tu dois savoir qu'elle se trouve dans la commune de Clervaux (Canton de Clervaux, Région de l'Oesling). Utilise ces informations pour "
-    "contextualiser tes réponses agronomiques et économiques. Par exemple, si la parcelle est en Oesling, privilégie les cultures adaptées au climat plus frais "
-    "et aux sols schisteux. Distingue rigoureusement selon le contexte : 'Luxembourg-ville' (la capitale, Gutland), 'Canton de Luxembourg' "
-    "(le canton administratif), et 'Luxembourg' (le pays dans son ensemble).\n"
-    "- Comprends l'intention derrière la question de l'utilisateur. S'il pose une question sur sa récolte, ses gains, son rendement, son sol, "
-    "ou la météo, tu dois utiliser les outils (Function Calling) pour aller chercher les vraies données.\n"
-    "- Si la question est générale (ex: 'C'est quoi le maïs ?', 'Comment vas-tu ?'), tu peux répondre avec tes connaissances "
-    "générales sans appeler d'outil.\n"
-    "- Formule tes réponses de manière fluide et conversationnelle. Ne liste pas les données brutes, raconte-les.\n"
-    "- Cite tes sources naturellement dans la phrase (ex: 'D'après les données de la NASA...', 'Le sol de votre parcelle est un Cambisol...').\n"
-    "- Sois concis (max 150 mots).\n\n"
-    "Règles d'or & Guardrails de sécurité :\n"
-    "1. Ne JAMAIS délivrer de posologie ou de dosage de pesticides ou de produits chimiques de synthèse. "
-    "   Renvoyer systématiquement vers l'ASTA (Luxembourg) ou la DRAE (Madagascar).\n"
-    "2. Ne JAMAIS délivrer de conseils médicaux ou vétérinaires. "
-    "   Renvoyer immédiatement vers un médecin, un vétérinaire ou un centre antipoison.\n"
-    "3. Ne JAMAIS promettre un rendement absolu : toujours formuler les rendements comme des tendances probabilistes face aux aléas climatiques."
+    "You are TerraLux AI's senior agronomic and economic assistant. You communicate with farmers, landowners, and agricultural decision-makers. "
+    "Your mission is to help them understand their parcels, soil properties, weather conditions, crop suitability, and economic returns.\n\n"
+    "STRICT BEHAVIOR RULES:\n"
+    "- ALWAYS answer in English by default, unless the user explicitly writes in French.\n"
+    "- STRICT WEATHER ROUTING: If the user asks about the weather, today's conditions, rain, temperature, or forecasts, YOU MUST use get_weather_forecast to retrieve real NASA POWER and Open-Meteo data. NEVER discuss crop rotation unless the user explicitly asks about rotation.\n"
+    "- ZERO HARDCODED LISTS: When recommending what to plant or which trees/crops to select, use real tools and search_web_tavily to find up-to-date data, verified against ISRIC SoilGrids pedology.\n"
+    "- STRICT PARCEL CONTEXT: Only discuss the active parcel. If the parcel is in Madagascar (Antsiranana/Diana), NEVER mention Luxembourg. If the parcel is in Luxembourg, NEVER mention Madagascar.\n"
+    "- When recommending a crop or analyzing returns, ALWAYS specify: (1) expected yield in t/ha and total t for user's acreage, (2) gross revenue estimated in EUR or MGA, (3) market risk level (Low/Medium/High) due to input costs and price volatility. If risk is high, propose a safer alternative. Cite recent 2025-2026 data.\n"
+    "- Be natural, warm, educational, and concise (< 150 words).\n\n"
+    "SAFETY GUARDRAILS:\n"
+    "1. NEVER prescribe synthetic chemical pesticide/herbicide dosages. Direct users to official agencies (ASTA in Luxembourg, DRAE in Madagascar).\n"
+    "2. NEVER provide medical or veterinary advice.\n"
+    "3. NEVER promise absolute yields: always express yields as probabilistic trends given climatic variability."
 )
 
 # =============================================================================
@@ -809,14 +797,26 @@ def execute_backend_function(name: str, args: Dict[str, Any], db: Session) -> Di
 # =============================================================================
 def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) -> str:
     """
-    Formule une réponse concise (< 150 mots), factuelle, en français avec citations de sources,
+    Formule une réponse concise (< 150 mots), factuelle, en français ou anglais avec citations de sources,
     utilisée lorsque le LLM distant est indisponible (rate limit 429 ou 403).
     """
     if "error" in res:
-        return f"Données indisponibles pour cette période, veuillez réessayer plus tard. ({res['error']})"
+        return f"Data currently unavailable: {res['error']}"
+
+    is_french = any(w in user_message.lower() for w in [
+        "bonjour", "salut", "comment", "pourquoi", "qu'est-ce", "c'est quoi", "est-ce",
+        "merci", "qui es-tu", "que fais-tu", "parcelle", "champ", "sol", "mildiou",
+        "ble", "blé", "riz", "culture", "passeport", "resilience", "plante", "quelle", "quel", "donne"
+    ])
 
     if name in ["get_parcel_diagnosis", "get_crop_recommendation"]:
         if "rotation" in user_message.lower():
+            if not is_french:
+                return (
+                    f"Crop rotation is an essential agronomic lever for '{res.get('parcel_name')}' : "
+                    f"alternating botanical families breaks pest and disease cycles, preserves soil organic matter, "
+                    f"and optimizes water use. Sources: TerraLux AI Agronomic Engine, SoilGrids & FAO ECOCROP."
+                )
             return (
                 f"La rotation des cultures est un levier agronomique essentiel pour votre exploitation '{res.get('parcel_name')}' : "
                 f"selon le moteur agronomique TerraLux AI, alterner les familles botaniques permet de rompre le cycle des bio-agresseurs, "
@@ -836,15 +836,16 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
             "quoi", "que planter", "planter", "plante", "plantes", "semer", "semis", "mettre",
             "culture", "cultures", "pourquoi", "recommand", "conseil", "conseiller", "conseillez",
             "terrain", "champ", "parcelle", "faire", "perdu", "choisir", "choix", "manioc", "mais",
-            "maïs", "riz", "blé", "ble", "cacao", "pomme de terre", "adéquation", "variété", "recolte", "récolte"
+            "maïs", "riz", "blé", "ble", "cacao", "pomme de terre", "adéquation", "variété", "recolte", "récolte",
+            "what to plant", "crop", "crops", "recommend", "plant", "grow"
         ]
         is_crop_query = any(w in user_message.lower() for w in crop_keywords)
 
         if crops and is_crop_query:
             target = None
             for c in crops:
-                if any(word in c["name"].lower() for word in ["maïs", "mais", "riz", "blé", "cacao", "manioc", "pomme de terre"]):
-                    if any(word in user_message.lower() for word in ["maïs", "mais", "riz", "blé", "cacao", "manioc", "pomme de terre"]):
+                if any(word in c["name"].lower() for word in ["maïs", "corn", "mais", "riz", "rice", "blé", "wheat", "cacao", "manioc", "cassava", "pomme de terre", "potato"]):
+                    if any(word in user_message.lower() for word in ["maïs", "corn", "mais", "riz", "rice", "blé", "wheat", "cacao", "manioc", "cassava", "pomme de terre", "potato"]):
                         target = c
                         break
             if not target:
@@ -852,6 +853,14 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
 
             top_names = ", ".join([c["name"] for c in crops[:3]])
             reasons_txt = " ; ".join(target.get("positive_reasons", [])[:2])
+
+            if not is_french:
+                return (
+                    f"For your field at '{res.get('parcel_name')}', based on soil physics ({res.get('soil_classification_wrb')}, pH {res.get('soil_ph')}) "
+                    f"and recent climate, optimal crop recommendations are: {top_names}. "
+                    f"Ranked #1, {target['name']} shows strong scientific suitability of {target.get('suitability_score', 90)}/100 ({reasons_txt}). "
+                    f"Sources: NASA POWER, ISRIC SoilGrids, FAO ECOCROP."
+                )
 
             if any(w in user_message.lower() for w in ["quoi", "que planter", "planter", "mettre", "perdu", "conseil", "choisir", "faire", "terrain"]):
                 return (
@@ -867,6 +876,13 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
                     f"Justifications agronomiques : {reasons_txt}. Sources : NASA POWER, SoilGrids, FAO ECOCROP."
                 )
         else:
+            if not is_french:
+                return (
+                    f"For your agricultural estate '{res.get('parcel_name')}', ISRIC SoilGrids and NASA POWER indicate "
+                    f"soil classified as {res.get('soil_classification_wrb')} with pH {res.get('soil_ph')} "
+                    f"and fertility index {res.get('soil_richness_score')}/100. "
+                    f"Resilience status: {res.get('resilience_status')}. Sources: ISRIC SoilGrids & NASA POWER."
+                )
             return (
                 f"Sur votre exploitation '{res.get('parcel_name')}', les relevés scientifiques SoilGrids et NASA POWER indiquent "
                 f"un sol classifié {res.get('soil_classification_wrb')} avec un pH de {res.get('soil_ph')} "
@@ -878,8 +894,17 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
         curr = res.get("current_conditions", {})
         nasa_p = res.get("past_7_days_nasa_power", {})
         alerts = res.get("short_term_alerts", [])
-        alerts_txt = f" Alertes immédiates : {' | '.join(alerts)}." if alerts else " Aucune alerte immédiate."
         drought_percentile = res.get("soil_moisture_sport_lis_percentile", 50)
+        if not is_french:
+            alerts_txt_en = f" Immediate alerts: {' | '.join(alerts)}." if alerts else " No immediate alerts."
+            return (
+                f"According to NASA POWER and Open-Meteo for '{res.get('parcel_name')}' : "
+                f"Current conditions: {curr.get('temperature_c', 'N/A')}°C, relative humidity {curr.get('relative_humidity_pct', 'N/A')}%, wind {curr.get('wind_speed_kmh', 'N/A')} km/h. "
+                f"Reference annual precipitation: 845 mm. Cumulative 7-day rainfall (NASA POWER): {nasa_p.get('cumulative_rain_mm', 0)} mm. "
+                f"Soil moisture status (NASA SPoRT-LIS): {res.get('drought_alert', 'Normal')} (percentile {drought_percentile}%).{alerts_txt_en} "
+                f"Sources: NASA POWER, Open-Meteo, NASA SPoRT-LIS."
+            )
+        alerts_txt = f" Alertes immédiates : {' | '.join(alerts)}." if alerts else " Aucune alerte immédiate."
         return (
             f"Selon les données NASA POWER et Open-Meteo pour '{res.get('parcel_name')}' : "
             f"Conditions actuelles : {curr.get('temperature_c', 'N/A')}°C, hygrométrie {curr.get('relative_humidity_pct', 'N/A')}%, vent {curr.get('wind_speed_kmh', 'N/A')} km/h. "
@@ -890,7 +915,13 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
 
     elif name == "get_disease_risk":
         diseases = res.get("diseases", [])
-        lines = [f"{d['disease']} (Risque {d['risk_level']})" for d in diseases]
+        lines = [f"{d['disease']} ({'Risk' if not is_french else 'Risque'} {d['risk_level']})" for d in diseases]
+        if not is_french:
+            return (
+                f"Phytosanitary disease evaluation for '{res.get('parcel_name')}' at {res.get('ambient_temperature')} and {res.get('ambient_humidity')} relative humidity: "
+                f"{', '.join(lines)}. Recommendation: Maintain row aeration and manage canopy shade. "
+                f"Sources: NASA POWER & Open-Meteo."
+            )
         return (
             f"Évaluation phytosanitaire pour '{res.get('parcel_name')}' sous {res.get('ambient_temperature')} et {res.get('ambient_humidity')} d'hygrométrie : "
             f"{', '.join(lines)}. Recommandations : aération des rangs et gestion de l'ombrage. "
@@ -901,20 +932,26 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
         history = res.get("history", [])
         if not history:
             return (
-                f"Pour votre exploitation '{res.get('parcel_name')}' : {res.get('rotation_status')} "
-                f"Source : {res.get('source')}."
+                f"For your parcel '{res.get('parcel_name')}' : {res.get('rotation_status')} Source: {res.get('source')}."
+                if not is_french else
+                f"Pour votre exploitation '{res.get('parcel_name')}' : {res.get('rotation_status')} Source : {res.get('source')}."
             )
-        lines = [f"{h['year']} ({h['season']}) : {h['crop']} (famille {h['family']})" for h in history[:3]]
-        return (
-            f"Historique cultural enregistré pour '{res.get('parcel_name')}' : "
-            f"{' ; '.join(lines)}. Source : {res.get('source')}."
-        )
+        lines = [f"{h['year']} ({h['season']}) : {h['crop']} (family {h['family']})" for h in history[:3]]
+        if not is_french:
+            return f"Crop history recorded for '{res.get('parcel_name')}': {' ; '.join(lines)}. Source: {res.get('source')}."
+        return f"Historique cultural enregistré pour '{res.get('parcel_name')}' : {' ; '.join(lines)}. Source : {res.get('source')}."
 
     elif name == "get_soil_richness":
         props = res.get("properties", {})
         ph = props.get("ph", {}).get("value", 6.2)
         wrb = res.get("wrb_class", "Cambisol")
         richness = res.get("richness_index", 75)
+        if not is_french:
+            return (
+                f"According to ISRIC SoilGrids (250m) for '{res.get('parcel_name')}', soil is classified as {wrb} "
+                f"with an overall fertility index of {richness}/100 and measured pH of {ph}. "
+                f"Identified deficiencies: {', '.join(res.get('deficiencies', [])) or 'None'}. Source: SoilGrids."
+            )
         return (
             f"D'après les relevés SoilGrids (ISRIC 250m) pour '{res.get('parcel_name')}', le sol est un {wrb} "
             f"avec un indice de fertilité globale de {richness}/100 et un pH mesuré de {ph}. "
@@ -923,18 +960,25 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
 
     elif name == "calculate_expected_yield":
         area = res.get("area_ha", 1.0)
-        p_name = res.get("parcel_name", "votre parcelle")
+        p_name = res.get("parcel_name", "your parcel" if not is_french else "votre parcelle")
         items = res.get("crops_economics", [])
         if not items:
-            return f"Pour {p_name} ({area} ha), estimations économiques en cours de calcul."
+            return f"For {p_name} ({area} ha), economic estimates are being computed." if not is_french else f"Pour {p_name} ({area} ha), estimations économiques en cours de calcul."
 
         # Scénario spécifique Luxembourg (Blé vs Colza et hausse engrais +35%)
         if res.get("country") == "LUX":
-            ble_item = next((it for it in items if "blé" in it["crop_name"].lower()), None)
-            colza_item = next((it for it in items if "colza" in it["crop_name"].lower()), None)
+            ble_item = next((it for it in items if any(w in it["crop_name"].lower() for w in ["blé", "ble", "wheat"])), None)
+            colza_item = next((it for it in items if any(w in it["crop_name"].lower() for w in ["colza", "rapeseed"])), None)
             if ble_item and colza_item:
                 ble_rev = f"{ble_item['gross_revenue_eur']:,.0f} €"
                 colza_rev = f"{colza_item['gross_revenue_eur']:,.0f} €"
+                if not is_french:
+                    return (
+                        f"With {area} ha at {p_name}, winter wheat yields approx {ble_item['yield_t_ha']} t/ha (total {ble_item['expected_yield_t']} t) "
+                        f"for estimated gross revenue of {ble_rev}, but due to rising fertilizer costs (+35%) and lower 2026 yield, market risk is High. "
+                        f"Winter rapeseed, with {colza_item['yield_t_ha']} t/ha ({colza_item['expected_yield_t']} t) and stable pricing (~510 €/t, gross revenue {colza_rev}), "
+                        f"presents a safer alternative this season. Sources: 2025-2026 Luxembourg data (Statec / ASTA & FAO ECOCROP)."
+                    )
                 return (
                     f"Avec {area} ha à {p_name}, le blé vous rapporterait environ {ble_rev} brut "
                     f"({ble_item['yield_t_ha']} t/ha, total {ble_item['expected_yield_t']} t), "
@@ -946,13 +990,20 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
 
         # Scénario spécifique Madagascar (Riz -25% et risque cyclone vs Manioc / Cacao)
         if res.get("country") == "MDG":
-            riz_item = next((it for it in items if "riz" in it["crop_name"].lower()), None)
-            manioc_item = next((it for it in items if "manioc" in it["crop_name"].lower()), None)
-            cacao_item = next((it for it in items if "cacao" in it["crop_name"].lower()), None)
+            riz_item = next((it for it in items if any(w in it["crop_name"].lower() for w in ["riz", "rice"])), None)
+            manioc_item = next((it for it in items if any(w in it["crop_name"].lower() for w in ["manioc", "cassava"])), None)
+            cacao_item = next((it for it in items if any(w in it["crop_name"].lower() for w in ["cacao", "cocoa"])), None)
             alt = cacao_item or manioc_item
             if riz_item and alt:
                 riz_rev = f"{riz_item['gross_revenue_eur']:,.0f} € ({riz_item['gross_revenue_mga']:,.0f} Ar)"
                 alt_rev = f"{alt['gross_revenue_eur']:,.0f} € ({alt['gross_revenue_mga']:,.0f} Ar)"
+                if not is_french:
+                    return (
+                        f"With {area} ha at {p_name}, upland rice produces approx {riz_item['expected_yield_t']} t ({riz_item['yield_t_ha']} t/ha) "
+                        f"for gross revenue of {riz_rev}, but due to a 25% drop in rice prices and cyclone risks from November to April, "
+                        f"market risk is High. The recommended safer alternative is {alt['crop_name']} (yield {alt['yield_t_ha']} t/ha, estimated revenue {alt_rev}). "
+                        f"Sources: 2025-2026 Madagascar data (INSTAT / DRAE Diana)."
+                    )
                 return (
                     f"Avec {area} ha à {p_name}, le riz pluvial produirait environ {riz_item['expected_yield_t']} t ({riz_item['yield_t_ha']} t/ha) "
                     f"pour un revenu brut de {riz_rev}, mais avec la baisse du prix du riz (-25%) et le risque cyclonique présent de novembre à avril, "
@@ -962,6 +1013,13 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
 
         top_it = items[0]
         rev_txt = f"{top_it['gross_revenue_eur']:,.0f} €" if res.get("currency") == "EUR" else f"{top_it['gross_revenue_mga']:,.0f} Ar"
+        if not is_french:
+            return (
+                f"For {p_name} ({area} ha): (1) Expected yield: {top_it['yield_t_ha']} t/ha (total {top_it['expected_yield_t']} t). "
+                f"(2) Estimated gross revenue: {rev_txt} for {top_it['crop_name']}. "
+                f"(3) Risk level: {top_it['market_risk']} ({top_it['market_risk_justification']}). "
+                f"Sources: 2025-2026 Agricultural Economics Data."
+            )
         return (
             f"Pour {p_name} ({area} ha) : (1) Rendement attendu : {top_it['yield_t_ha']} t/ha (total {top_it['expected_yield_t']} t). "
             f"(2) Revenu brut estimé : {rev_txt} pour {top_it['crop_name']}. "
@@ -970,11 +1028,17 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
         )
 
     elif name == "assess_market_risk":
-        crop_n = res.get("crop_name", "cette culture")
-        risk_lvl = res.get("risk_level", "Moyen")
+        crop_n = res.get("crop_name", "this crop" if not is_french else "cette culture")
+        risk_lvl = res.get("risk_level", "Medium" if not is_french else "Moyen")
         justif = res.get("market_justification", "")
         alt = res.get("safer_alternative")
-        alt_txt = f" Alternative plus sûre recommandée : {alt}." if alt else ""
+        alt_txt = f" Recommended safer alternative: {alt}." if (alt and not is_french) else (f" Alternative plus sûre recommandée : {alt}." if alt else "")
+        if not is_french:
+            return (
+                f"Market risk evaluation for {crop_n} on '{res.get('parcel_name')}': "
+                f"Risk level: {risk_lvl}. Analysis: {justif}.{alt_txt} "
+                f"Sources: {', '.join(res.get('sources', ['2025-2026 Agricultural Market Data']))}."
+            )
         return (
             f"Évaluation du risque de marché pour {crop_n} sur '{res.get('parcel_name')}' : "
             f"Niveau de risque : {risk_lvl}. Analyse : {justif}.{alt_txt} "
@@ -1234,15 +1298,16 @@ def run_chat_agent(
     # Détection des intentions nécessitant l'appel d'outils scientifiques (Function Calling)
     is_tool_intent = any(k in msg_lower for k in [
         "pourquoi", "recommand", "quoi planter", "que planter", "quelle culture", "choisir",
-        "conseil", "conseilles", "plante", "planter", "semer", "mettre",
+        "conseil", "conseilles", "plante", "planter", "semer", "mettre", "what to plant", "recommend", "crop", "crops",
         "meteo", "météo", "pluie", "prevision", "prévision", "temperature", "température",
-        "secheresse", "sécheresse", "climat",
-        "ph", "sol", "sols", "fertilit", "carbone", "azote", "richesse", "carence", "wrb",
-        "tache", "feuille", "feuilles", "jaune",
-        "maladie", "pathogene", "pathogène", "mildiou", "pyriculariose", "septoriose",
-        "gagner de l'argent", "gagner", "combien d'argent", "revenu", "marge", "rentabilit", "rendement",
+        "secheresse", "sécheresse", "climat", "weather", "forecast", "rain", "climate", "today", "temperature",
+        "ph", "sol", "sols", "fertilit", "carbone", "azote", "richesse", "carence", "wrb", "soil", "nutrient",
+        "tache", "feuille", "feuilles", "jaune", "leaf", "spot", "yellow",
+        "maladie", "pathogene", "pathogène", "mildiou", "pyriculariose", "septoriose", "disease", "pest", "mildew", "blight",
+        "gagner de l'argent", "gagner", "combien d'argent", "revenu", "marge", "rentabilit", "rendement", "yield", "revenue", "margin", "money", "profit",
         "wilwerdange", "eselborn", "clervaux", "esch", "antsiranana", "diego", "ambilobe", "ambanja", "nosy be",
-        "cyclone", "inondation", "evenement", "tempete", "historique des cultures"
+        "cyclone", "inondation", "evenement", "tempete", "historique des cultures", "flood", "storm", "event",
+        "tree", "trees", "agroforest", "species", "restoration"
     ])
 
     # Interrogation prioritaire de la Base de Connaissances (500 Questions / RAG)
@@ -1264,22 +1329,31 @@ def run_chat_agent(
             }
 
     # Salutations simples sans question technique
-    greetings = ["bonjour", "salut", "hello", "coucou", "bonsoir"]
+    greetings = ["bonjour", "salut", "hello", "hi", "coucou", "bonsoir", "hey"]
     first_word = msg_lower.split()[0].strip(",.!?") if msg_lower.split() else ""
     has_tech_words = any(k in msg_lower for k in [
-        "ph", "sol", "pourquoi", "tache", "feuille", "maladie", "meteo", "météo", "pluie",
-        "mais", "maïs", "riz", "ble", "blé", "culture", "parcelle", "rotation", "fiche",
-        "ecocrop", "rendement", "tonne", "quintaux", "garantir", "wrb", "carbone", "azote", "carence"
+        "ph", "sol", "soil", "pourquoi", "why", "tache", "feuille", "leaf", "maladie", "disease", "meteo", "météo", "weather", "pluie", "rain",
+        "mais", "maïs", "corn", "riz", "rice", "ble", "blé", "wheat", "culture", "crop", "parcelle", "parcel", "rotation", "fiche",
+        "ecocrop", "rendement", "yield", "tonne", "quintaux", "garantir", "wrb", "carbone", "azote", "carence"
     ])
     is_pure_greeting = (first_word in greetings) and not has_tech_words
 
     if is_pure_greeting:
-        response_text = (
-            "Bonjour ! Je suis l'assistant agronomique de TerraLux AI. "
-            "Je consulte directement les données scientifiques de vos parcelles : "
-            "propriétés du sol SoilGrids (pH, carbone, azote), météo en direct et prévisions à 7 jours (NASA POWER & Open-Meteo), "
-            "et recommandations agro-écologiques FAO ECOCROP. Comment puis-je vous aider aujourd'hui ?"
-        )
+        is_msg_french = any(w in msg_lower for w in ["bonjour", "salut", "coucou", "bonsoir"])
+        if is_msg_french:
+            response_text = (
+                "Bonjour ! Je suis l'assistant agronomique de TerraLux AI. "
+                "Je consulte directement les données scientifiques de vos parcelles : "
+                "propriétés du sol SoilGrids (pH, carbone, azote), météo en direct et prévisions à 7 jours (NASA POWER & Open-Meteo), "
+                "et recommandations agro-écologiques FAO ECOCROP. Comment puis-je vous aider aujourd'hui ?"
+            )
+        else:
+            response_text = (
+                "Hello! I am your TerraLux AI agronomic assistant. "
+                "I directly consult verified scientific databases for your parcels: "
+                "SoilGrids soil physics (pH, carbon, nitrogen), live weather and 7-day forecasts (NASA POWER & Open-Meteo), "
+                "and agro-ecological recommendations from FAO ECOCROP. How can I help you today?"
+            )
     else:
         # Prompt système contextualisé strictement à la parcelle en cours
         active_sys_prompt = SYSTEM_PROMPT
@@ -1289,10 +1363,10 @@ def run_chat_agent(
                 p_name = parcel_obj.name
                 p_country = parcel_obj.country or "LUX"
                 if p_country == "MDG":
-                    anti_lux = "Tu es l'assistant TerraLux pour la parcelle d'Antsiranana (Région Diana, Madagascar). RÈGLE ABSOLUE : Tu ne dois parler QUE de la parcelle en cours d'analyse ('" + p_name + "'). Ne parle JAMAIS du Luxembourg. Si tu ne connais pas la réponse, dis-le, n'invente pas."
+                    anti_lux = f"You are the TerraLux assistant for parcel '{p_name}' in Diana Region, Madagascar. ABSOLUTE RULE: Speak ONLY about this active parcel. NEVER mention Luxembourg. If you don't know an answer, say so honestly without inventing."
                     active_sys_prompt = f"{anti_lux}\n\n{SYSTEM_PROMPT}"
                 else:
-                    anti_mdg = "Tu es l'assistant TerraLux pour la parcelle du Luxembourg ('" + p_name + "'). RÈGLE ABSOLUE : Tu ne dois parler QUE de la parcelle en cours d'analyse. Ne parle JAMAIS de Madagascar. Si tu ne connais pas la réponse, dis-le, n'invente pas."
+                    anti_mdg = f"You are the TerraLux assistant for parcel '{p_name}' in Luxembourg. ABSOLUTE RULE: Speak ONLY about this active parcel. NEVER mention Madagascar. If you don't know an answer, say so honestly without inventing."
                     active_sys_prompt = f"{anti_mdg}\n\n{SYSTEM_PROMPT}"
 
         # Construction du fil de discussion complet pour le LLM
@@ -1395,26 +1469,37 @@ def run_chat_agent(
             selected_tool = "get_parcel_diagnosis"
             tool_args = {"parcel_id": effective_parcel_id}
 
-            if any(k in msg_lower for k in ["meteo", "météo", "pluie", "prevision", "prévision", "temperature", "température", "secheresse", "sécheresse", "climat"]):
+            if any(k in msg_lower for k in ["meteo", "météo", "pluie", "prevision", "prévision", "temperature", "température", "secheresse", "sécheresse", "climat", "weather", "forecast", "rain", "climate", "today"]):
                 selected_tool = "get_weather_forecast"
-            elif any(k in msg_lower for k in ["ph", "sol", "sols", "fertilit", "carbone", "azote", "richesse", "carence", "wrb"]):
+            elif any(k in msg_lower for k in ["ph", "sol", "sols", "fertilit", "carbone", "azote", "richesse", "carence", "wrb", "soil", "nutrient", "fertility"]):
                 selected_tool = "get_soil_richness"
-            elif any(k in msg_lower for k in ["tache", "feuille", "feuilles", "jaune"]):
+            elif any(k in msg_lower for k in ["tache", "feuille", "feuilles", "jaune", "leaf spot", "yellow leaf"]):
                 selected_tool = "diagnose_leaf_image"
-            elif any(k in msg_lower for k in ["maladie", "pathogene", "pathogène", "mildiou", "pyriculariose", "septoriose"]):
+            elif any(k in msg_lower for k in ["maladie", "pathogene", "pathogène", "mildiou", "pyriculariose", "septoriose", "disease", "pest", "mildew", "blight"]):
                 selected_tool = "get_disease_risk"
             elif any(k in msg_lower for k in [
                 "gagner de l'argent", "gagner", "combien d'argent", "revenu brut", "revenu estimé",
-                "rentabilit", "marge", "argent"
+                "rentabilit", "marge", "argent", "yield", "revenue", "profit", "margin", "money"
             ]) or ("rendement" in msg_lower and any(w in msg_lower for w in ["attendu", "estimé", "surface", "ha", "hectare", "euro", "argent", "plante"])) or ("combien" in msg_lower and any(w in msg_lower for w in ["argent", "euro", "ariary", "gagner"])):
                 selected_tool = "calculate_expected_yield"
-            elif (("risque" in msg_lower and any(w in msg_lower for w in ["marché", "marche", "prix", "cout", "coût", "financier", "intrants", "inflation"])) or
-                  any(k in msg_lower for k in ["inflation", "volatilité", "volatilite", "hausse des coûts", "engrais"])):
+            elif (("risk" in msg_lower or "risque" in msg_lower) and any(w in msg_lower for w in ["marché", "marche", "prix", "cout", "coût", "financier", "intrants", "inflation", "market", "price", "cost", "fertilizer"])) or \
+                  any(k in msg_lower for k in ["inflation", "volatilité", "volatilite", "hausse des coûts", "engrais", "volatility", "input cost"]):
                 selected_tool = "assess_market_risk"
                 crop_target = "Blé d'hiver"
-                for c in ["blé", "ble", "colza", "riz", "manioc", "cacao", "orge", "avoine", "pomme de terre"]:
+                for c in ["blé", "ble", "colza", "riz", "manioc", "cacao", "orge", "avoine", "pomme de terre", "wheat", "rapeseed", "rice", "cassava", "cocoa", "potato"]:
                     if c in msg_lower:
-                        crop_target = "Colza d'hiver" if "colza" in c else ("Blé d'hiver" if "blé" in c or "ble" in c else c.capitalize())
+                        if c in ["colza", "rapeseed"]:
+                            crop_target = "Colza d'hiver"
+                        elif c in ["blé", "ble", "wheat"]:
+                            crop_target = "Blé d'hiver"
+                        elif c in ["riz", "rice"]:
+                            crop_target = "Riz pluvial"
+                        elif c in ["manioc", "cassava"]:
+                            crop_target = "Manioc"
+                        elif c in ["cacao", "cocoa"]:
+                            crop_target = "Cacao"
+                        else:
+                            crop_target = c.capitalize()
                         break
                 tool_args["crop_name"] = crop_target
             elif any(k in msg_lower for k in ["fiche", "ecocrop", "exigence"]):
@@ -1425,23 +1510,24 @@ def run_chat_agent(
                         crop_target = c
                         break
                 tool_args = {"crop_name": crop_target}
-            elif "rotation" in msg_lower and "pourquoi" in msg_lower:
+            elif "rotation" in msg_lower and ("pourquoi" in msg_lower or "why" in msg_lower):
                 selected_tool = "get_parcel_diagnosis"
-            elif any(k in msg_lower for k in ["rotation", "precedent", "précédent", "historique des cultures", "plantation"]):
+            elif any(k in msg_lower for k in ["rotation", "precedent", "précédent", "historique des cultures", "plantation", "crop history", "history"]):
                 selected_tool = "get_crop_history"
             elif any(k in msg_lower for k in [
                 "pourquoi", "recommand", "culture", "cultures", "quoi", "planter", "plante", "plantes",
                 "semer", "semis", "mettre", "terrain", "champ", "perdu", "faire", "choisir", "conseil",
-                "manioc", "mais", "maïs", "riz", "ble", "blé", "cacao", "pomme de terre"
+                "manioc", "mais", "maïs", "riz", "ble", "blé", "cacao", "pomme de terre",
+                "what to plant", "recommend", "crop", "crops", "plant", "grow"
             ]):
                 selected_tool = "get_parcel_diagnosis"
-            elif any(k in msg_lower for k in ["cyclone", "inondation", "evenement", "tempete"]):
+            elif any(k in msg_lower for k in ["cyclone", "inondation", "evenement", "tempete", "flood", "storm", "hurricane"]):
                 selected_tool = "get_past_events"
             elif any(k in msg_lower for k in ["delete", "supprimer", "supprime"]) and any(k in msg_lower for k in ["parcel", "parcelle", "champ"]):
                 selected_tool = "delete_parcel"
-            elif any(k in msg_lower for k in ["tavily", "web", "arbre", "arbres", "tree", "species", "agroforest", "espece", "espèce"]):
+            elif any(k in msg_lower for k in ["tavily", "web", "arbre", "arbres", "tree", "trees", "species", "agroforest", "espece", "espèce", "restoration"]):
                 selected_tool = "search_web_tavily"
-                tool_args = {"query": f"agroforestry species and soil health {message}"}
+                tool_args = {"query": f"agroforestry tree species and soil health {message}"}
 
             # Exécution et synthèse factuelle
             if selected_tool == "get_parcel_diagnosis":

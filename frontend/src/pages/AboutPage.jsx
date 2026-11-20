@@ -53,7 +53,7 @@ export default function AboutPage() {
             </div>
             <div>
               <h2 className="text-xl font-serif font-bold text-white">{t('about.team_title')}</h2>
-              <p className="text-xs font-mono text-emerald-400">Fondateurs & Ingénieurs Agronomes Souverains</p>
+              <p className="text-xs font-mono text-emerald-400">Founders & Sovereign Agronomy Engineers</p>
             </div>
           </div>
           <p className="text-sm text-slate-300 leading-relaxed font-light">
@@ -66,7 +66,7 @@ export default function AboutPage() {
           <div>
             <h2 className="text-2xl font-serif text-white">{t('about.science_title')}</h2>
             <p className="text-xs font-mono text-slate-400 mt-1">
-              Validation mathématique et calibration scientifique vérifiée
+              Mathematical validation and verified scientific calibration
             </p>
           </div>
 
@@ -107,9 +107,9 @@ export default function AboutPage() {
         <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs font-mono text-slate-400">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Infrastructure 100% Souveraine • Registre Art. 30 RGPD Conforme</span>
+            <span>100% Sovereign Infrastructure • GDPR Art. 30 Compliant Registry</span>
           </div>
-          <span className="text-emerald-400">Grand-Duché de Luxembourg & Madagascar</span>
+          <span className="text-emerald-400">Grand Duchy of Luxembourg & Madagascar</span>
         </div>
 
       </div>

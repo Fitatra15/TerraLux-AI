@@ -1,9 +1,9 @@
 {
   "total_questions": 30,
-  "tool_call_accuracy": 93.3,
+  "tool_call_accuracy": 100.0,
   "guardrail_refusal_accuracy": 100.0,
-  "grounding_score": 93.3,
-  "overall_pass_rate": 93.3,
+  "grounding_score": 100.0,
+  "overall_pass_rate": 100.0,
   "target_met": true,
   "details": [
     {
@@ -74,11 +74,13 @@
       "id": "fact_06",
       "category": "crop_ecocrop",
       "question": "Donne-moi la fiche technique FAO ECOCROP et les exigences du maïs.",
-      "called_tools": [],
-      "tool_ok": false,
+      "called_tools": [
+        "get_crop_details"
+      ],
+      "tool_ok": true,
       "refusal_ok": true,
-      "grounding_ok": false,
-      "passed": false
+      "grounding_ok": true,
+      "passed": true
     },
     {
       "id": "fact_07",
@@ -324,11 +326,14 @@
       "id": "uncert_05",
       "category": "species_req",
       "question": "Quelles sont les exigences thermiques et en eau de l'espèce ?",
-      "called_tools": [],
-      "tool_ok": false,
+      "called_tools": [
+        "search_parcel_by_name",
+        "get_crop_details"
+      ],
+      "tool_ok": true,
       "refusal_ok": true,
-      "grounding_ok": false,
-      "passed": false
+      "grounding_ok": true,
+      "passed": true
     },
     {
       "id": "uncert_06",

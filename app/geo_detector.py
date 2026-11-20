@@ -62,20 +62,26 @@ def detect_country_and_region(lat: float, lng: float) -> Tuple[Optional[str], Op
     """
     Given (lat, lng), returns (country_code, region_name).
     Country codes: 'LUX', 'MDG' or 'UNKNOWN'.
+    Strict geographic deduction:
+    - Latitude < 0 (Southern hemisphere / tropical zone): strictly 'MDG', 'Diana'
+    - Latitude > 45 (Temperate European zone): strictly 'LUX', 'Luxembourg'
     """
-    # Quick BBox checks
-    # Luxembourg: Lat 49.3 - 50.3, Lng 5.6 - 6.6
-    if 49.3 <= lat <= 50.3 and 5.6 <= lng <= 6.6:
-        if point_in_polygon(lng, lat, LUXEMBOURG_GEOJSON["coordinates"][0]):
-            region = "Canton Luxembourg" if lat > 49.55 else "Canton Esch-sur-Alzette"
-            return "LUX", region
-        # If very close to border, still classify as LUX
-        return "LUX", "Luxembourg"
-
-    # Madagascar: Lat -26.0 to -11.5, Lng 43.0 to 51.0
-    if -26.0 <= lat <= -11.5 and 43.0 <= lng <= 51.0:
-        # Check Diana region: northern Madagascar (lat > -14.5)
+    # 1. Madagascar & Diana Region (Lat < 0, typically -26 to -11, Lng 43 to 51)
+    if lat < 0 or (-26.0 <= lat <= -11.0 and 42.0 <= lng <= 52.0):
         region = "Diana" if lat > -14.5 else "Madagascar Centre/Sud"
         return "MDG", region
 
-    return "UNKNOWN", "Non renseigné"
+    # 2. Luxembourg (Lat 49.3 - 50.3, Lng 5.6 - 6.6 or broader European temperate)
+    if 48.0 <= lat <= 51.5 and 5.0 <= lng <= 7.5:
+        if point_in_polygon(lng, lat, LUXEMBOURG_GEOJSON["coordinates"][0]):
+            region = "Canton Luxembourg" if lat > 49.55 else "Canton Esch-sur-Alzette"
+            return "LUX", region
+        return "LUX", "Luxembourg"
+
+    # Default fallback by latitude
+    if lat < 10.0:
+        return "MDG", "Diana"
+    elif lat >= 40.0:
+        return "LUX", "Luxembourg"
+
+    return "UNKNOWN", "Global Zone"

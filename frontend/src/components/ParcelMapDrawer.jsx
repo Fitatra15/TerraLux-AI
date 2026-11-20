@@ -104,7 +104,7 @@ export default function ParcelMapDrawer({
   // HTML5 Geolocation API: Use current GPS location
   const handleUseCurrentGPS = () => {
     if (!navigator.geolocation) {
-      setGpsError("La géolocalisation n'est pas supportée par votre navigateur.");
+      setGpsError("Geolocation is not supported by your browser.");
       return;
     }
     setGpsLoading(true);
@@ -125,7 +125,7 @@ export default function ParcelMapDrawer({
       },
       (err) => {
         setGpsLoading(false);
-        setGpsError("Impossible de récupérer votre position GPS (autorisation refusée ou signal indisponible).");
+        setGpsError("Unable to acquire GPS position (permission denied or signal unavailable).");
         console.warn("GPS error:", err);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

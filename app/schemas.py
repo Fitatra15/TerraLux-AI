@@ -37,6 +37,7 @@ class ParcelCreate(BaseModel):
     name: Optional[str] = "Ma Parcelle"
     latitude: float
     longitude: float
+    country: Optional[str] = None
     area_ha: Optional[float] = 1.0
     elevation_m: Optional[float] = 250.0
     slope_pct: Optional[float] = 2.0

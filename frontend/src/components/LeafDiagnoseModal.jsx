@@ -34,7 +34,7 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
       });
       setResult(res.data);
     } catch (err) {
-      setError("Échec de l'analyse foliaire. Veuillez vérifier le fichier.");
+      setError("Failed to run foliar analysis. Please check your image file.");
     } finally {
       setLoading(false);
     }
@@ -51,8 +51,8 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
               <Camera className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-sand">Diagnostic Foliaire Multimodal</h3>
-              <p className="text-xs text-sand/80">Vision IA (DINOv2) + Fusion Contexte Climat & Sol</p>
+              <h3 className="font-bold text-base text-sand">Multimodal Foliar Diagnosis</h3>
+              <p className="text-xs text-sand/80">AI Vision (DINOv2) + Climate & Soil Context Fusion</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-white/70 hover:text-white hover:bg-white/10">
@@ -73,14 +73,14 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
             />
             {preview ? (
               <div className="flex flex-col items-center gap-2">
-                <img src={preview} alt="Aperçu feuille" className="h-44 w-auto rounded-lg object-cover shadow-sm border border-gray-200" />
-                <p className="text-xs text-gray-500">Cliquez pour remplacer la photo</p>
+                <img src={preview} alt="Leaf Preview" className="h-44 w-auto rounded-lg object-cover shadow-sm border border-gray-200" />
+                <p className="text-xs text-gray-500">Click to replace photo</p>
               </div>
             ) : (
               <div className="py-6 flex flex-col items-center gap-2 text-gray-500">
                 <Upload className="w-10 h-10 text-forest/60 mb-1" />
-                <p className="text-sm font-semibold text-gray-700">Sélectionnez une photo de feuille malade</p>
-                <p className="text-xs text-gray-400">Formats acceptés : JPG, PNG (Mobile ou terrain)</p>
+                <p className="text-sm font-semibold text-gray-700">Select a photo of a diseased leaf</p>
+                <p className="text-xs text-gray-400">Accepted formats: JPG, PNG (Field camera or mobile)</p>
               </div>
             )}
           </div>
@@ -91,7 +91,7 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Fermer
+              Close
             </button>
             <button
               onClick={handleDiagnose}
@@ -101,12 +101,12 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Fusion multimodale en cours...</span>
+                  <span>Running multimodal fusion...</span>
                 </>
               ) : (
                 <>
                   <Cpu className="w-4 h-4" />
-                  <span>Lancer le diagnostic</span>
+                  <span>Run Diagnosis</span>
                 </>
               )}
             </button>
@@ -126,7 +126,7 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
-                    Diagnostic Final Confirmé
+                    Confirmed Final Diagnosis
                   </span>
                   <h4 className="font-bold text-gray-900 text-base mt-1">
                     {result.final_diagnosis}
@@ -138,12 +138,12 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
               {/* Double Confidence Bars */}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-xs">
-                  <span className="text-[11px] text-gray-500 font-medium block">Confiance Image (ML)</span>
+                  <span className="text-[11px] text-gray-500 font-medium block">Image Confidence (ML)</span>
                   <div className="flex items-baseline gap-1 mt-0.5">
                     <span className="text-xl font-bold text-gray-800 font-mono">
                       {Math.round(result.image_confidence * 100)}%
                     </span>
-                    <span className="text-[10px] text-gray-400">DINOv2 gelé</span>
+                    <span className="text-[10px] text-gray-400">Frozen DINOv2</span>
                   </div>
                   <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
                     <div
@@ -156,13 +156,13 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
                 <div className="bg-white p-3 rounded-lg border border-emerald-200 shadow-xs">
                   <span className="text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Confiance Contextuelle</span>
+                    <span>Contextual Confidence</span>
                   </span>
                   <div className="flex items-baseline gap-1 mt-0.5">
                     <span className="text-xl font-bold text-emerald-700 font-mono">
                       {Math.round(result.contextual_confidence * 100)}%
                     </span>
-                    <span className="text-[10px] text-emerald-600 font-medium">Climat + Sol</span>
+                    <span className="text-[10px] text-emerald-600 font-medium">Climate + Soil</span>
                   </div>
                   <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
                     <div
@@ -175,13 +175,13 @@ export default function LeafDiagnoseModal({ parcelId, onClose }) {
 
               {/* Plausibility Breakdown */}
               <div className="text-[11px] bg-white/80 p-2.5 rounded-lg border border-emerald-100 flex justify-between text-gray-600">
-                <span>Plausibilité climatique : <strong>{Math.round(result.climate_plausibility * 100)}%</strong></span>
-                <span>Plausibilité pédologique : <strong>{Math.round(result.soil_plausibility * 100)}%</strong></span>
+                <span>Climatic Plausibility: <strong>{Math.round(result.climate_plausibility * 100)}%</strong></span>
+                <span>Pedological Plausibility: <strong>{Math.round(result.soil_plausibility * 100)}%</strong></span>
               </div>
 
               {/* Justification Text */}
               <p className="text-xs text-gray-700 leading-relaxed bg-white p-3 rounded-lg border border-emerald-100">
-                💡 <strong>Explication scientifique :</strong> {result.explanation}
+                💡 <strong>Scientific Explanation:</strong> {result.explanation}
               </p>
 
               {result.warning && (

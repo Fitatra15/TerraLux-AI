@@ -9,11 +9,11 @@ export default function Navbar() {
   const location = useLocation();
 
   const navLinks = [
-    { to: '/', label: 'Portfolio Actifs', icon: Sprout, match: ['/', '/portfolio'] },
-    { to: '/passport/845ef4e9-b776-40b4-af77-c84510862b1e', label: 'Passeport I1', icon: Award, match: ['/passport'] },
+    { to: '/', label: 'Asset Portfolio', icon: Sprout, match: ['/', '/portfolio'] },
+    { to: '/passport/845ef4e9-b776-40b4-af77-c84510862b1e', label: 'Passport I1', icon: Award, match: ['/passport'] },
     { to: '/events/845ef4e9-b776-40b4-af77-c84510862b1e', label: 'Past Events', icon: Activity, match: ['/events'] },
-    { to: '/reforestation', label: 'Reforestation Plan', icon: Trees, match: ['/reforestation'] },
-    { to: '/map', label: 'Carte Globale', icon: Map, match: ['/map'] },
+    { to: '/reforestation', label: 'Restoration Plan', icon: Trees, match: ['/reforestation'] },
+    { to: '/map', label: 'Global Map', icon: Map, match: ['/map'] },
     { to: '/dashboard', label: 'Macro Dashboard', icon: BarChart3, match: ['/dashboard'] },
   ];
 
@@ -37,7 +37,7 @@ export default function Navbar() {
                 Sovereign Tier 1
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-mono">Infrastructure de Décision Agronomique</p>
+            <p className="text-[11px] text-slate-400 font-mono">Sovereign Agronomic Decision Infrastructure</p>
           </div>
         </Link>
 

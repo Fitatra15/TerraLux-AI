@@ -16,7 +16,7 @@ export default function GuidesPage() {
       title: t('guides.step1_title'),
       desc: t('guides.step1_desc'),
       icon: MapPin,
-      badge: "Cadastre & GPS NASA",
+      badge: "Cadastre & NASA GPS",
       color: "text-emerald-400",
       cta: { text: t('actions.add_parcel'), to: '/' }
     },
@@ -25,7 +25,7 @@ export default function GuidesPage() {
       title: t('guides.step2_title'),
       desc: t('guides.step2_desc'),
       icon: Activity,
-      badge: "SoilGrids & Climat",
+      badge: "SoilGrids & Climate",
       color: "text-cyan-400",
       cta: { text: t('actions.view_history'), to: '/events' }
     },
@@ -34,7 +34,7 @@ export default function GuidesPage() {
       title: t('guides.step3_title'),
       desc: t('guides.step3_desc'),
       icon: Sprout,
-      badge: "FAO ECOCROP & Marges",
+      badge: "FAO ECOCROP & Margins",
       color: "text-amber-400",
       cta: { text: t('actions.view_details'), to: '/parcel/845ef4e9-b776-40b4-af77-c84510862b1e' }
     },
@@ -43,7 +43,7 @@ export default function GuidesPage() {
       title: t('guides.step4_title'),
       desc: t('guides.step4_desc'),
       icon: Award,
-      badge: "Certification SHA-256",
+      badge: "SHA-256 Certification",
       color: "text-emerald-300",
       cta: { text: t('actions.view_passport'), to: '/passport' }
     }
@@ -114,7 +114,7 @@ export default function GuidesPage() {
                     <div className="flex items-center justify-between pt-2">
                       <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>Processus souverain audité en temps réel</span>
+                        <span>Sovereign real-time audited process</span>
                       </div>
 
                       <Link

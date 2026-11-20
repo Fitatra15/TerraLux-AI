@@ -171,52 +171,137 @@ def create_parcel(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional)
 ):
-    country, region = detect_country_and_region(parcel_in.latitude, parcel_in.longitude)
-    
-    user_id = current_user.id if current_user else None
+    lat = float(parcel_in.latitude)
+    lon = float(parcel_in.longitude)
 
-    region_natural = parcel_in.region_natural
-    canton = parcel_in.canton
+    # 1. STRICT DEDUCTION OF COUNTRY AND JURISDICTION FROM REAL GPS
+    # Coordinates with Lat < 0 are strictly Madagascar (MDG - Diana)
+    if lat < 0 or (-26.0 <= lat <= -10.0 and 40.0 <= lon <= 55.0):
+        country = "MDG"
+        from app.luxembourg_geo import get_madagascar_hierarchy
+        mdg_hier = get_madagascar_hierarchy(parcel_in.name or "", db)
+        if mdg_hier:
+            region = mdg_hier["region_natural"]
+            region_natural = "Diana"
+            canton = mdg_hier["canton"]
+        else:
+            region = "Diana"
+            region_natural = "Diana"
+            name_low = (parcel_in.name or "").lower()
+            if "mangaoka" in name_low or "antsiranana ii" in name_low:
+                canton = "District d'Antsiranana II"
+            elif "ambilobe" in name_low:
+                canton = "District d'Ambilobe"
+            elif "ambanja" in name_low or "sambirano" in name_low:
+                canton = "District d'Ambanja"
+            elif "nosy be" in name_low:
+                canton = "District de Nosy Be"
+            else:
+                canton = "District d'Antsiranana I"
+        default_soil = "Ferralsol rhodi-lixique"
 
-    if country == "LUX":
+    elif lat > 45 or (48.0 <= lat <= 51.5 and 5.0 <= lon <= 7.5):
+        country = "LUX"
         from app.luxembourg_geo import get_region_from_city, get_luxembourg_hierarchy
         hier = get_luxembourg_hierarchy(parcel_in.name or "", db)
-        if hier:
-            region_natural = region_natural or hier["region_natural"]
-            canton = canton or hier["canton"]
-            region = region or (f"Canton de {canton}" if not canton.startswith("Canton") else canton)
+        if hier and hier.get("country") == "LUX":
+            region_natural = hier["region_natural"]
+            canton = hier["canton"]
+            region = f"Canton de {canton}" if not canton.startswith("Canton") else canton
         else:
-            region_natural = region_natural or (get_region_from_city(parcel_in.name or "") or ("Oesling" if parcel_in.latitude > 49.90 else "Gutland"))
-            canton = canton or ("Canton de Clervaux" if region_natural == "Oesling" else ("Canton d'Esch-sur-Alzette" if parcel_in.latitude < 49.55 else "Canton de Luxembourg"))
-    elif country == "MDG":
-        region_natural = region_natural or "Diana"
-        canton = canton or "Diana"
+            region_natural = "Oesling" if lat > 49.90 else "Gutland"
+            canton = "Canton de Clervaux" if region_natural == "Oesling" else ("Canton d'Esch-sur-Alzette" if lat < 49.55 else "Canton de Luxembourg")
+            region = canton
+        default_soil = "Cambisol squelettique" if region_natural == "Oesling" else "Cambisol calcaro-eutrique"
+
+    else:
+        detected_c, detected_r = detect_country_and_region(lat, lon)
+        country = detected_c if detected_c != "UNKNOWN" else (parcel_in.country or ("MDG" if lat < 10 else "LUX"))
+        region = detected_r
+        canton = parcel_in.canton or ("District d'Antsiranana I" if country == "MDG" else "Canton de Luxembourg")
+        region_natural = "Diana" if country == "MDG" else "Gutland"
+        default_soil = "Ferralsol rhodi-lixique" if country == "MDG" else "Cambisol calcaro-eutrique"
+
+    user_id = current_user.id if current_user else None
 
     new_parcel = Parcel(
         user_id=user_id,
-        name=parcel_in.name or f"Parcelle {region or country}",
-        latitude=parcel_in.latitude,
-        longitude=parcel_in.longitude,
+        name=parcel_in.name or f"Parcel {region or country}",
+        latitude=lat,
+        longitude=lon,
         country=country,
         region=region,
         region_natural=region_natural,
         canton=canton,
         area_ha=parcel_in.area_ha or 1.0,
-        elevation_m=parcel_in.elevation_m or 250.0,
-        slope_pct=parcel_in.slope_pct or 2.0
+        elevation_m=parcel_in.elevation_m or (480.0 if region_natural == "Oesling" else (280.0 if country == "LUX" else 65.0)),
+        slope_pct=parcel_in.slope_pct or (5.0 if region_natural == "Oesling" else 2.0)
     )
     db.add(new_parcel)
     db.commit()
     db.refresh(new_parcel)
-    return new_parcel
+
+    # Attach initial soil profile matching country strictly
+    from app.models import SoilProfile
+    soil_p = SoilProfile(
+        parcel_id=new_parcel.id,
+        depth_cm="0-5",
+        wrb_class=default_soil,
+        ph=5.8 if country == "MDG" else 6.7,
+        clay=34.0,
+        sand=40.0,
+        soc=1.8 if country == "MDG" else 2.4,
+        nitrogen=1.5,
+        cec=18.0
+    )
+    db.add(soil_p)
+    db.commit()
+
+    return _enrich_parcel_out(new_parcel, db)
 
 def _enrich_parcel_out(parcel: Parcel, db: Session) -> ParcelOut:
     from app.passport_generator import calculate_passport_metrics
+    lat = float(parcel.latitude) if parcel.latitude is not None else 0.0
+
+    # Strict GPS-level country resolution: negative lat is ALWAYS MDG!
+    effective_country = parcel.country
+    if lat < 0:
+        effective_country = "MDG"
+    elif lat > 45:
+        effective_country = "LUX"
+
+    # Soil type: ensure soil strictly matches real geography
     soil_type = None
     if parcel.soil_profiles and len(parcel.soil_profiles) > 0:
-        soil_type = parcel.soil_profiles[0].wrb_class
+        raw_soil = parcel.soil_profiles[0].wrb_class
+        if effective_country == "MDG" and "cambisol" in raw_soil.lower():
+            soil_type = "Ferralsol rhodi-lixique"
+        elif effective_country == "LUX" and "ferralsol" in raw_soil.lower():
+            soil_type = "Cambisol calcaro-eutrique"
+        else:
+            soil_type = raw_soil
+
     if not soil_type:
-        soil_type = "Cambisol calcaro-eutrique" if parcel.country == "LUX" else "Ferralsol rhodi-lixique"
+        soil_type = "Ferralsol rhodi-lixique" if effective_country == "MDG" else "Cambisol calcaro-eutrique"
+
+    # Canton & Region consistency
+    effective_canton = getattr(parcel, "canton", None)
+    effective_region = parcel.region
+    if effective_country == "MDG":
+        if not effective_region or "canton" in effective_region.lower() or effective_region == "None":
+            effective_region = "Diana"
+        if not effective_canton or any(k in effective_canton.lower() for k in ["luxembourg", "clervaux", "esch", "gutland", "oesling"]):
+            name_l = (parcel.name or "").lower()
+            if "mangaoka" in name_l:
+                effective_canton = "District d'Antsiranana II"
+            elif "ambilobe" in name_l:
+                effective_canton = "District d'Ambilobe"
+            elif "ambanja" in name_l:
+                effective_canton = "District d'Ambanja"
+            elif "nosy be" in name_l:
+                effective_canton = "District de Nosy Be"
+            else:
+                effective_canton = "District d'Antsiranana I"
 
     score = None
     if parcel.passports and len(parcel.passports) > 0:
@@ -225,10 +310,10 @@ def _enrich_parcel_out(parcel: Parcel, db: Session) -> ParcelOut:
         try:
             _, _, score = calculate_passport_metrics(parcel.id, db)
         except Exception:
-            score = 81.3 if parcel.country == "LUX" else 69.6
+            score = 81.3 if effective_country == "LUX" else 69.6
 
     status = "Ready"
-    if not parcel.photos and parcel.country == "MDG" and "Ambilobe" in (parcel.name or ""):
+    if not parcel.photos and effective_country == "MDG" and "Ambilobe" in (parcel.name or ""):
         status = "Needs photo"
 
     return ParcelOut(
@@ -236,10 +321,10 @@ def _enrich_parcel_out(parcel: Parcel, db: Session) -> ParcelOut:
         name=parcel.name,
         latitude=parcel.latitude,
         longitude=parcel.longitude,
-        country=parcel.country,
-        region=parcel.region,
-        canton=getattr(parcel, "canton", None),
-        region_natural=getattr(parcel, "region_natural", None),
+        country=effective_country,
+        region=effective_region,
+        canton=effective_canton,
+        region_natural=getattr(parcel, "region_natural", None) or ("Diana" if effective_country == "MDG" else "Gutland"),
         area_ha=float(parcel.area_ha) if parcel.area_ha else 1.0,
         elevation_m=float(getattr(parcel, "elevation_m", 250.0) or 250.0),
         slope_pct=float(getattr(parcel, "slope_pct", 2.0) or 2.0),
@@ -591,7 +676,7 @@ def chat_endpoint(
         )
     except Exception as e:
         return ChatResponse(
-            response="Bonjour ! Je suis l'assistant agronomique TerraLux AI. Je peux analyser la fertilité de votre sol, justifier le choix des cultures optimales d'après NASA POWER et SoilGrids, ou évaluer les risques de maladies pour votre parcelle.",
+            response="Hello! I am your TerraLux AI agronomic assistant. I can analyze your soil physics, justify crop recommendations using NASA POWER and SoilGrids, or check disease risks for your parcel.",
             tool_calls=[]
         )
 
@@ -740,9 +825,9 @@ def get_reforestation_zones(db: Session = Depends(get_db)):
     return [
         ReforestationZoneOut(
             id="ref-diana-1",
-            name="Bassin versant de la Sambirano (Ambanja)",
-            risk_type="Érosion des sols & Crue cyclonique",
-            species_proposed=["Cannelier de Madagascar", "Moringa oleifera", "Acacia mangium", "Albizia lebbeck"],
+            name="Sambirano Watershed (Ambanja)",
+            risk_type="Soil Erosion & Cyclonic Runoff",
+            species_proposed=["Madagascar Cinnamon", "Moringa oleifera", "Acacia mangium", "Albizia lebbeck"],
             area_ha=320.0,
             polygon_geojson={
                 "type": "Polygon",
@@ -751,9 +836,9 @@ def get_reforestation_zones(db: Session = Depends(get_db)):
         ),
         ReforestationZoneOut(
             id="ref-lux-1",
-            name="Zone tampon hydrographique Alzette (Esch / Bettembourg)",
-            risk_type="Rétention des crues & corridor écologique",
-            species_proposed=["Salix alba (Saule)", "Alnus glutinosa (Aulne glutineux)", "Quercus robur (Chêne pédonculé)"],
+            name="Alzette Hydrographic Buffer Zone (Esch / Bettembourg)",
+            risk_type="Flood Retention & Ecological Corridor",
+            species_proposed=["Salix alba (White Willow)", "Alnus glutinosa (Black Alder)", "Quercus robur (English Oak)"],
             area_ha=85.0,
             polygon_geojson={
                 "type": "Polygon",

@@ -51,7 +51,7 @@ export default function ParcelDetail() {
       } catch {
         pData = {
           id: id,
-          name: 'Parcelle Antsiranana (Diana)',
+          name: 'Antsiranana Agricultural Estate (Diana)',
           latitude: -12.2794,
           longitude: 49.2914,
           country: 'MDG',
@@ -70,7 +70,7 @@ export default function ParcelDetail() {
         const ecoData = await cachedGet(`/parcels/${id}/economics`);
         setEconomics(ecoData);
       } catch (e) {
-        console.warn("Economics non disponible", e);
+        console.warn("Economics currently unavailable", e);
       }
 
       // 4. Soil Profile
@@ -87,7 +87,7 @@ export default function ParcelDetail() {
 
     } catch (err) {
       console.error(err);
-      setError("Impossible de charger l'intégralité des données de la parcelle.");
+      setError("Unable to load parcel agronomic diagnostic data.");
     } finally {
       setLoading(false);
     }
@@ -114,13 +114,13 @@ export default function ParcelDetail() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-4">
         <AlertTriangle className="w-12 h-12 text-accent mx-auto" />
-        <h2 className="text-xl font-bold text-gray-800">Erreur de chargement</h2>
+        <h2 className="text-xl font-bold text-gray-800">Loading Error</h2>
         <p className="text-sm text-gray-600">{error}</p>
         <button
           onClick={fetchData}
           className="px-5 py-2.5 bg-forest text-sand rounded-xl font-semibold text-xs inline-flex items-center gap-2"
         >
-          <RefreshCw className="w-4 h-4" /> Réessayer
+          <RefreshCw className="w-4 h-4" /> Retry
         </button>
       </div>
     );
@@ -137,7 +137,7 @@ export default function ParcelDetail() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Link to="/" className="text-xs text-forest hover:underline flex items-center gap-1 font-semibold">
-              <ArrowLeft className="w-3.5 h-3.5" /> Retour carte
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Map
             </Link>
             <span className="text-gray-300">•</span>
             <span className="text-[11px] font-mono uppercase bg-sand text-forest-dark px-2 py-0.5 rounded font-bold">
@@ -145,10 +145,10 @@ export default function ParcelDetail() {
             </span>
           </div>
           <h1 className="text-2xl font-black text-forest tracking-tight">
-            {parcel?.name || 'Fiche Diagnostic Parcelle'}
+            {parcel?.name || 'Parcel Agronomic Diagnostic'}
           </h1>
           <p className="text-xs text-gray-500 font-mono">
-            GPS: [{lat.toFixed(4)}, {lng.toFixed(4)}] • Surface: {parcel?.area_ha || 2.5} ha
+            GPS: [{lat.toFixed(4)}, {lng.toFixed(4)}] • Area: {parcel?.area_ha || 2.5} ha
           </p>
         </div>
 
@@ -161,7 +161,7 @@ export default function ParcelDetail() {
             className="px-4 py-3 bg-forest-light hover:bg-forest text-sand rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm border border-forest transition-colors"
           >
             <FileText className="w-4 h-4 text-accent" />
-            <span>Rapport PDF</span>
+            <span>PDF Report</span>
           </a>
 
           <button
@@ -169,7 +169,7 @@ export default function ParcelDetail() {
             className="px-5 py-3 bg-accent hover:bg-accent-dark text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-transform hover:scale-102"
           >
             <Camera className="w-4 h-4" />
-            <span>Uploader une photo de feuille</span>
+            <span>Upload Leaf Photo</span>
           </button>
         </div>
       </div>
@@ -189,8 +189,8 @@ export default function ParcelDetail() {
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-forest">Profil & Richesse du Sol</h2>
-                    <p className="text-xs text-gray-500">Classification WRB & Indices multi-profondeurs (SoilGrids v2.0)</p>
+                    <h2 className="text-base font-bold text-forest">Soil Profile & Health Index</h2>
+                    <p className="text-xs text-gray-500">WRB Classification & Multi-depth Indices (SoilGrids v2.0)</p>
                   </div>
                 </div>
 
@@ -202,7 +202,7 @@ export default function ParcelDetail() {
                     <span className="text-xs text-gray-400 font-semibold">/100</span>
                   </div>
                   <span className="text-[11px] font-semibold text-accent uppercase">
-                    Indice : {soil.richness_label}
+                    Index: {soil.richness_label}
                   </span>
                 </div>
               </div>
@@ -210,7 +210,7 @@ export default function ParcelDetail() {
               {/* WRB Class Badge & Properties */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                  <span className="text-[10px] text-gray-500 font-medium block">Type de Sol (WRB)</span>
+                  <span className="text-[10px] text-gray-500 font-medium block">Soil Type (WRB)</span>
                   <span className="text-xs font-bold text-gray-800 block mt-0.5 truncate" title={soil.wrb_class}>
                     {soil.wrb_class}
                   </span>
@@ -222,13 +222,13 @@ export default function ParcelDetail() {
                   </span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                  <span className="text-[10px] text-gray-500 font-medium block">Carbone SOC</span>
+                  <span className="text-[10px] text-gray-500 font-medium block">SOC Carbon</span>
                   <span className="text-xs font-bold text-gray-800 block mt-0.5">
                     {soil.properties?.soc?.value} g/kg
                   </span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                  <span className="text-[10px] text-gray-500 font-medium block">Azote Total</span>
+                  <span className="text-[10px] text-gray-500 font-medium block">Total Nitrogen</span>
                   <span className="text-xs font-bold text-gray-800 block mt-0.5">
                     {soil.properties?.nitrogen?.value} g/kg
                   </span>
@@ -240,7 +240,7 @@ export default function ParcelDetail() {
                 <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <span className="text-xs font-bold text-amber-800">Carences & points de vigilance identifiés :</span>
+                    <span className="text-xs font-bold text-amber-800">Identified deficiencies & vigilance points:</span>
                     <ul className="text-xs text-amber-700 list-disc list-inside mt-0.5 space-y-0.5">
                       {soil.deficiencies.map((d, idx) => (
                         <li key={idx}>{d}</li>
@@ -252,7 +252,7 @@ export default function ParcelDetail() {
 
               {/* Agronomic Interpretation */}
               <div className="p-4 bg-sand/30 border border-sand-dark/20 rounded-2xl text-xs text-forest leading-relaxed">
-                📖 <strong>Interprétation agronomique :</strong> {soil.interpretation}
+                📖 <strong>Agronomic interpretation:</strong> {soil.interpretation}
               </div>
             </div>
           )}
@@ -264,15 +264,15 @@ export default function ParcelDetail() {
                 <div>
                   <h2 className="text-lg font-bold text-forest flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-accent" />
-                    <span>Estimation Économique & Risque Marché</span>
+                    <span>Economic Estimation & Market Risk</span>
                   </h2>
                   <p className="text-xs text-gray-500">
-                    Modèle technico-économique 2025-2026 : Rendement (t), Revenu brut (€), Marge & Volatilité des intrants
+                    2025-2026 Techno-economic model: Expected Yield (t), Gross Revenue (€), Margin & Input Volatility
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold px-3 py-1 bg-sand/60 text-forest rounded-xl border border-sand-dark/20">
-                    Surface : {economics.area_ha} ha
+                    Surface Area: {economics.area_ha} ha
                   </span>
                 </div>
               </div>
@@ -282,7 +282,7 @@ export default function ParcelDetail() {
                 <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900 leading-relaxed">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <strong>Contexte macro-économique :</strong> {economics.inflation_context}
+                    <strong>Macroeconomic context:</strong> {economics.inflation_context}
                   </div>
                 </div>
               )}
@@ -290,8 +290,9 @@ export default function ParcelDetail() {
               {/* Cards par culture */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {economics.crops_economics.slice(0, 3).map((item, idx) => {
-                  const isHighRisk = item.market_risk === "Élevé";
-                  const isLowRisk = item.market_risk === "Faible";
+                  const isHighRisk = item.market_risk === "Élevé" || item.market_risk === "High";
+                  const isLowRisk = item.market_risk === "Faible" || item.market_risk === "Low";
+                  const riskLabel = isLowRisk ? "Low" : isHighRisk ? "High" : "Medium";
                   const badgeColor = isLowRisk
                     ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                     : isHighRisk
@@ -304,28 +305,28 @@ export default function ParcelDetail() {
                         <div className="flex items-center justify-between gap-1 mb-1">
                           <span className="font-bold text-sm text-gray-900">{item.crop_name}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>
-                            Risque {item.market_risk}
+                            Risk: {riskLabel}
                           </span>
                         </div>
                         <span className="text-[11px] text-gray-400 block mb-2">{item.scientific_name}</span>
                         
                         <div className="space-y-1.5 text-xs text-gray-700">
                           <div className="flex justify-between">
-                            <span className="text-gray-500">Rendement attendu :</span>
+                            <span className="text-gray-500">Expected Yield:</span>
                             <span className="font-semibold text-gray-900">{item.yield_t_ha} t/ha ({item.expected_yield_t} t)</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500">Revenu brut estimé :</span>
+                            <span className="text-gray-500">Estimated Gross Revenue:</span>
                             <span className="font-bold text-forest">
                               {economics.currency === "EUR" ? `${item.gross_revenue_eur.toLocaleString()} €` : `${item.gross_revenue_mga?.toLocaleString()} Ar`}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500">Coûts intrants :</span>
+                            <span className="text-gray-500">Input Costs:</span>
                             <span className="font-medium text-gray-600">{item.input_cost_total_eur.toLocaleString()} €</span>
                           </div>
                           <div className="flex justify-between border-t border-gray-200/80 pt-1">
-                            <span className="font-medium text-gray-700">Marge nette estimée :</span>
+                            <span className="font-medium text-gray-700">Estimated Net Margin:</span>
                             <span className={`font-bold ${item.net_margin_eur >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                               {item.net_margin_eur.toLocaleString()} €
                             </span>
@@ -337,7 +338,7 @@ export default function ParcelDetail() {
                         💡 {item.market_risk_justification}
                         {item.safer_alternative && (
                           <div className="mt-1 text-emerald-800 font-medium">
-                            ➔ Alternative plus sûre : {item.safer_alternative}
+                            ➔ Safer alternative: {item.safer_alternative}
                           </div>
                         )}
                       </div>
@@ -354,110 +355,117 @@ export default function ParcelDetail() {
               <div>
                 <h2 className="text-lg font-bold text-forest flex items-center gap-2">
                   <Sprout className="w-5 h-5 text-accent" />
-                  <span>Top 3 Cultures Recommandées</span>
+                  <span>Top 3 Recommended Crops</span>
                 </h2>
-                <p className="text-xs text-gray-500">Scoring agro-climatique & Explicabilité radicale (FAO ECOCROP)</p>
+                <p className="text-xs text-gray-500">Agro-climatic Scoring & Radical Explainability (FAO ECOCROP)</p>
               </div>
               <span className="text-[11px] font-mono text-gray-400">rules-v1</span>
             </div>
 
             <div className="space-y-4">
-              {recommendations && recommendations.map((crop, idx) => (
-                <div
-                  key={idx}
-                  className={`bg-white rounded-3xl p-6 border transition-all shadow-sm ${
-                    idx === 0 ? 'border-forest/40 ring-1 ring-forest/10' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-forest/5 flex items-center justify-center font-bold font-mono text-forest">
-                        #{idx + 1}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-base text-gray-900">{crop.name}</h3>
-                          {idx === 0 && (
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold uppercase">
-                              Choix optimal
-                            </span>
+              {recommendations && recommendations.map((crop, idx) => {
+                const isHigh = crop.market_risk === 'Élevé' || crop.market_risk === 'High';
+                const isLow = crop.market_risk === 'Faible' || crop.market_risk === 'Low';
+                const cropRisk = isLow ? 'Low' : isHigh ? 'High' : 'Medium';
+                const riskBadge = isLow ? 'bg-emerald-100 text-emerald-800' : isHigh ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800';
+
+                return (
+                  <div
+                    key={idx}
+                    className={`bg-white rounded-3xl p-6 border transition-all shadow-sm ${
+                      idx === 0 ? 'border-forest/40 ring-1 ring-forest/10' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-forest/5 flex items-center justify-center font-bold font-mono text-forest">
+                          #{idx + 1}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-base text-gray-900">{crop.name}</h3>
+                            {idx === 0 && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold uppercase">
+                                Optimal Choice
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 italic">{crop.scientific_name}</p>
+                          {crop.expected_yield_t && (
+                            <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-600 font-mono flex-wrap">
+                              <span>🌾 {crop.yield_t_ha} t/ha ({crop.expected_yield_t} t)</span>
+                              <span>•</span>
+                              <span className="font-semibold text-forest">💰 {crop.gross_revenue_eur?.toLocaleString()} €</span>
+                              <span>•</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${riskBadge}`}>
+                                Risk: {cropRisk}
+                              </span>
+                            </div>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 italic">{crop.scientific_name}</p>
-                        {crop.expected_yield_t && (
-                          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-600 font-mono flex-wrap">
-                            <span>🌾 {crop.yield_t_ha} t/ha ({crop.expected_yield_t} t)</span>
-                            <span>•</span>
-                            <span className="font-semibold text-forest">💰 {crop.gross_revenue_eur?.toLocaleString()} €</span>
-                            <span>•</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${crop.market_risk === 'Faible' ? 'bg-emerald-100 text-emerald-800' : (crop.market_risk === 'Élevé' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}`}>
-                              Risque {crop.market_risk}
-                            </span>
-                          </div>
-                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <span className="text-2xl font-black text-forest font-mono">{crop.score}</span>
+                          <span className="text-xs text-gray-400">/100</span>
+                        </div>
+                        
+                        <button
+                          onClick={() => setExpandedCrop(expandedCrop === idx ? -1 : idx)}
+                          className="px-3.5 py-1.5 bg-gray-100 hover:bg-forest hover:text-sand text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
+                        >
+                          <span>Why?</span>
+                          {expandedCrop === idx ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <span className="text-2xl font-black text-forest font-mono">{crop.score}</span>
-                        <span className="text-xs text-gray-400">/100</span>
-                      </div>
-                      
-                      <button
-                        onClick={() => setExpandedCrop(expandedCrop === idx ? -1 : idx)}
-                        className="px-3.5 py-1.5 bg-gray-100 hover:bg-forest hover:text-sand text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
-                      >
-                        <span>Pourquoi ?</span>
-                        {expandedCrop === idx ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Accordion Content : Scientifically cited reasons */}
-                  {expandedCrop === idx && (
-                    <div className="mt-5 pt-4 border-t border-gray-100 space-y-3 animate-in fade-in duration-150">
-                      
-                      {/* Positive reasons */}
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Facteurs favorables (Climat & Sol vérifiés) :</span>
-                        </span>
-                        <ul className="text-xs text-gray-700 space-y-1 pl-4 list-disc">
-                          {crop.reasons?.positive?.map((pos, pIdx) => (
-                            <li key={pIdx} className="leading-relaxed">{pos}</li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Negative reasons */}
-                      {crop.reasons?.negative?.length > 0 && (
-                        <div className="space-y-1 pt-1">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                            <span>Contraintes & Limites :</span>
+                    {/* Accordion Content : Scientifically cited reasons */}
+                    {expandedCrop === idx && (
+                      <div className="mt-5 pt-4 border-t border-gray-100 space-y-3 animate-in fade-in duration-150">
+                        
+                        {/* Positive reasons */}
+                        <div className="space-y-1">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Favorable Factors (Verified Soil & Climate):</span>
                           </span>
                           <ul className="text-xs text-gray-700 space-y-1 pl-4 list-disc">
-                            {crop.reasons?.negative?.map((neg, nIdx) => (
-                              <li key={nIdx} className="leading-relaxed">{neg}</li>
+                            {crop.reasons?.positive?.map((pos, pIdx) => (
+                              <li key={pIdx} className="leading-relaxed">{pos}</li>
                             ))}
                           </ul>
                         </div>
-                      )}
 
-                      {/* Rotation explanation */}
-                      {crop.reasons?.rotation && (
-                        <div className="pt-2 text-xs bg-gray-50 p-3 rounded-xl border border-gray-200/60 text-gray-600">
-                          🔄 <strong>Rotation culturale :</strong> {crop.reasons.rotation}
-                        </div>
-                      )}
+                        {/* Negative reasons */}
+                        {crop.reasons?.negative?.length > 0 && (
+                          <div className="space-y-1 pt-1">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <span>Constraints & Limitations:</span>
+                            </span>
+                            <ul className="text-xs text-gray-700 space-y-1 pl-4 list-disc">
+                              {crop.reasons?.negative?.map((neg, nIdx) => (
+                                <li key={nIdx} className="leading-relaxed">{neg}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
 
-                    </div>
-                  )}
+                        {/* Rotation explanation */}
+                        {crop.reasons?.rotation && (
+                          <div className="pt-2 text-xs bg-gray-50 p-3 rounded-xl border border-gray-200/60 text-gray-600">
+                            🔄 <strong>Crop Rotation:</strong> {crop.reasons.rotation}
+                          </div>
+                        )}
 
-                </div>
-              ))}
+                      </div>
+                    )}
+
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -468,7 +476,7 @@ export default function ParcelDetail() {
 
           {/* Mini Leaflet Map with pin */}
           <div className="bg-white rounded-3xl p-4 border border-gray-200 shadow-sm overflow-hidden h-[280px] flex flex-col">
-            <span className="text-xs font-bold text-forest mb-2 block">Localisation satellite</span>
+            <span className="text-xs font-bold text-forest mb-2 block">Satellite Location</span>
             <div className="flex-1 rounded-2xl overflow-hidden shadow-inner">
               <MapContainer
                 center={[lat, lng]}
@@ -493,7 +501,7 @@ export default function ParcelDetail() {
           <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-sm space-y-3">
             <h3 className="text-sm font-bold text-forest uppercase tracking-wider flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-accent" />
-              <span>Risques Sanitaires & Pathogènes</span>
+              <span>Sanitary & Pathogen Risks</span>
             </h3>
 
             <div className="space-y-2">
@@ -501,14 +509,14 @@ export default function ParcelDetail() {
                 <div key={idx} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-gray-800 block">{d.disease}</span>
-                    <span className="text-[10px] text-gray-500">Confiance modèle : {Math.round(d.confidence * 100)}%</span>
+                    <span className="text-[10px] text-gray-500">Model Confidence: {Math.round(d.confidence * 100)}%</span>
                   </div>
                   <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                     d.risk_level === 'high' ? 'bg-red-100 text-red-700' :
                     d.risk_level === 'medium' ? 'bg-amber-100 text-amber-700' :
                     'bg-emerald-100 text-emerald-700'
                   }`}>
-                    {d.risk_level === 'high' ? 'Élevé' : d.risk_level === 'medium' ? 'Moyen' : 'Faible'}
+                    {d.risk_level === 'high' ? 'High' : d.risk_level === 'medium' ? 'Medium' : 'Low'}
                   </span>
                 </div>
               ))}
@@ -519,7 +527,7 @@ export default function ParcelDetail() {
           <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-sm space-y-3">
             <h3 className="text-sm font-bold text-forest uppercase tracking-wider flex items-center gap-2">
               <Calendar className="w-4 h-4 text-accent" />
-              <span>Historique Climatique Extrême</span>
+              <span>Extreme Climate History</span>
             </h3>
 
             <div className="space-y-3 relative pl-4 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
@@ -528,7 +536,7 @@ export default function ParcelDetail() {
                   <span className="absolute -left-4 top-1 w-2.5 h-2.5 rounded-full bg-accent border-2 border-white"></span>
                   <div className="text-xs font-bold text-gray-800">{ev.type}</div>
                   <div className="text-[10px] text-gray-500">
-                    {ev.start} {ev.end ? `au ${ev.end}` : ''} • Source: {ev.source}
+                    {ev.start} {ev.end ? `to ${ev.end}` : ''} • Source: {ev.source}
                   </div>
                 </div>
               ))}

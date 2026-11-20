@@ -12,7 +12,9 @@ import {
   getNasaGibsTileUrl, 
   NASA_GIBS_ATTRIBUTION, 
   CARTODB_DARK_MATTER_URL, 
-  CARTODB_ATTRIBUTION 
+  CARTODB_ATTRIBUTION,
+  ESRI_WORLD_IMAGERY_URL,
+  ESRI_WORLD_IMAGERY_ATTRIBUTION
 } from '../utils/nasaGibs';
 
 const parcelPinIcon = new L.DivIcon({
@@ -176,19 +178,18 @@ export default function ReforestationPlanScreen() {
                 zoomControl={true}
                 className="w-full h-full"
               >
-                {/* CartoDB Dark Matter Base */}
+                {/* Continuous Seamless Satellite Imagery Base */}
+                <TileLayer
+                  attribution={ESRI_WORLD_IMAGERY_ATTRIBUTION}
+                  url={ESRI_WORLD_IMAGERY_URL}
+                  maxZoom={19}
+                />
+                {/* CartoDB Dark Matter subtle contrast tint */}
                 <TileLayer
                   attribution={CARTODB_ATTRIBUTION}
                   url={CARTODB_DARK_MATTER_URL}
+                  opacity={0.3}
                   maxZoom={19}
-                />
-                {/* NASA GIBS MODIS TrueColor Satellite Overlay */}
-                <TileLayer
-                  attribution={NASA_GIBS_ATTRIBUTION}
-                  url={getNasaGibsTileUrl()}
-                  opacity={0.8}
-                  maxNativeZoom={9}
-                  maxZoom={18}
                 />
 
                 <MapRecenter center={mapCenter} />
@@ -255,19 +256,19 @@ export default function ReforestationPlanScreen() {
               ) : (
                 <>
                   {/* Dynamic Species Selector Tabs */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {speciesList.map((s, idx) => (
                       <button
                         key={s.id || idx}
                         onClick={() => setSelectedSpeciesIndex(idx)}
-                        className={`px-3 py-2.5 rounded-2xl text-xs font-mono font-medium flex items-center gap-2 transition-all ${
+                        className={`px-3 py-2.5 rounded-2xl text-xs font-mono font-medium flex items-center justify-center gap-2 transition-all ${
                           selectedSpeciesIndex === idx
-                            ? 'bg-emerald-500 text-black font-bold shadow-glow-mint'
+                            ? 'bg-emerald-400 text-black font-bold shadow-glow-mint'
                             : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
                         }`}
                       >
-                        <span>{s.icon_emoji || '🌿'}</span>
-                        <span className="truncate">{s.common_name?.split(' ')[0] || s.scientific_name?.split(' ')[0]}</span>
+                        <span className="shrink-0">{s.icon_emoji || '🌿'}</span>
+                        <span className="truncate">{s.common_name?.split('(')[0]?.trim() || s.scientific_name}</span>
                       </button>
                     ))}
                   </div>
