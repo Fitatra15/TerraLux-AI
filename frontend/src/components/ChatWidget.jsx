@@ -9,7 +9,7 @@ export default function ChatWidget({ parcelId }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      text: "Bonjour ! Je suis l'assistant agronomique TerraLux AI. Je peux analyser les propriétés du sol, justifier le choix des cultures d'après NASA POWER et SoilGrids, ou vérifier un risque sanitaire pour cette parcelle.",
+      text: "Hello! I am your TerraLux AI agronomic assistant. I can analyze soil physics, justify resilient crop selection via NASA POWER and SoilGrids, or assess economic yield and disease risks for this parcel.",
       tool_calls: []
     }
   ]);
@@ -55,7 +55,7 @@ export default function ChatWidget({ parcelId }) {
         ...prev,
         {
           role: 'assistant',
-          text: "Désolé, une erreur réseau est survenue lors de l'appel au moteur agronomique.",
+          text: "Sorry, a network connection error occurred while querying the agronomic engine.",
           tool_calls: []
         }
       ]);
@@ -73,7 +73,7 @@ export default function ChatWidget({ parcelId }) {
           className="flex items-center gap-2 px-4 py-3 bg-forest hover:bg-forest-light text-sand rounded-full shadow-2xl transition-all transform hover:scale-105 border border-forest-light/40 group"
         >
           <Bot className="w-5 h-5 text-accent animate-pulse" />
-          <span className="font-semibold text-sm">Assistant Agronomique</span>
+          <span className="font-semibold text-sm">Agronomic AI Assistant</span>
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
         </button>
       )}
@@ -90,12 +90,12 @@ export default function ChatWidget({ parcelId }) {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-sand flex items-center gap-2">
-                  Assistant TerraLux AI
+                  TerraLux AI Assistant
                   <span className="text-[10px] bg-accent/90 px-1.5 py-0.5 rounded text-white font-mono">
                     Grounded
                   </span>
                 </h3>
-                <p className="text-[11px] text-white/70">Croisement NASA POWER & SoilGrids</p>
+                <p className="text-[11px] text-white/70">Fusing NASA POWER & SoilGrids</p>
               </div>
             </div>
             <button
@@ -109,26 +109,32 @@ export default function ChatWidget({ parcelId }) {
           {/* Quick Suggestions */}
           <div className="bg-sand/30 px-3 py-2 border-b border-sand-dark/20 flex gap-1.5 overflow-x-auto text-[11px] whitespace-nowrap">
             <button
-              onClick={() => handleSend("Pourquoi recommander cette culture ?")}
+              onClick={() => handleSend("Why recommend this crop?")}
               className="px-2.5 py-1 bg-white hover:bg-forest/5 text-forest rounded-full border border-forest/20 shadow-xs"
             >
-              🌱 Pourquoi cette culture ?
+              🌱 Why this crop?
             </button>
             <button
-              onClick={() => handleSend("Quel est le pH de mon sol ?")}
+              onClick={() => handleSend("What is the soil pH?")}
               className="px-2.5 py-1 bg-white hover:bg-forest/5 text-forest rounded-full border border-forest/20 shadow-xs"
             >
-              🧪 pH & Fertilité du sol
+              🧪 Soil pH & Fertility
             </button>
             <button
-              onClick={() => handleSend("J'ai une tache sur mes feuilles")}
+              onClick={() => handleSend("What is the expected yield and margin?")}
               className="px-2.5 py-1 bg-white hover:bg-forest/5 text-forest rounded-full border border-forest/20 shadow-xs"
             >
-              🍂 Diagnostic feuille
+              🌾 Yield & Margin
+            </button>
+            <button
+              onClick={() => handleSend("I noticed a spot on the leaves")}
+              className="px-2.5 py-1 bg-white hover:bg-forest/5 text-forest rounded-full border border-forest/20 shadow-xs"
+            >
+              🍂 Leaf Diagnosis
             </button>
           </div>
 
-          {/* Message history */}
+          {/* Message history — Zero internal tool badges displayed */}
           <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50/50">
             {messages.map((m, idx) => (
               <div
@@ -150,7 +156,7 @@ export default function ChatWidget({ parcelId }) {
             {loading && (
               <div className="flex items-center gap-2 text-xs text-forest/70 font-medium">
                 <Sparkles className="w-4 h-4 animate-spin text-accent" />
-                <span>Interrogation des bases scientifiques...</span>
+                <span>Consulting verified scientific databases...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -168,8 +174,8 @@ export default function ChatWidget({ parcelId }) {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Posez votre question agronomique..."
-              className="flex-1 bg-gray-100 border border-gray-300 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-forest focus:bg-white"
+              placeholder="Ask your agronomic or financial question..."
+              className="flex-1 bg-gray-100 border border-gray-300 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-forest focus:bg-white text-gray-900 placeholder:text-gray-500"
             />
             <button
               type="submit"

@@ -337,6 +337,35 @@ def delete_parcel_photos(id: str, db: Session = Depends(get_db)):
         "message": f"{deleted_count} photo(s) supprimée(s) définitivement du stockage souverain (RGPD Art. 17)."
     }
 
+@router.delete("/parcels/{id}", tags=["Parcels"])
+def delete_parcel_endpoint(id: str, db: Session = Depends(get_db)):
+    """
+    Deletes a parcel and cascades to all associated records across observations, photos,
+    soil profiles, recommendations, alerts, and chat sessions.
+    """
+    parcel = db.query(Parcel).filter(Parcel.id == id).first()
+    if not parcel:
+        raise HTTPException(status_code=404, detail="Parcelle introuvable.")
+
+    from app.models import (
+        CropHistory, SoilProfile, ParcelPhoto, Observation, Event,
+        Recommendation, DiseaseRisk, Alert, ResiliencePassport, ChatSession
+    )
+    db.query(SoilProfile).filter(SoilProfile.parcel_id == id).delete(synchronize_session=False)
+    db.query(ParcelPhoto).filter(ParcelPhoto.parcel_id == id).delete(synchronize_session=False)
+    db.query(Observation).filter(Observation.parcel_id == id).delete(synchronize_session=False)
+    db.query(Event).filter(Event.parcel_id == id).delete(synchronize_session=False)
+    db.query(CropHistory).filter(CropHistory.parcel_id == id).delete(synchronize_session=False)
+    db.query(Recommendation).filter(Recommendation.parcel_id == id).delete(synchronize_session=False)
+    db.query(DiseaseRisk).filter(DiseaseRisk.parcel_id == id).delete(synchronize_session=False)
+    db.query(Alert).filter(Alert.parcel_id == id).delete(synchronize_session=False)
+    db.query(ResiliencePassport).filter(ResiliencePassport.parcel_id == id).delete(synchronize_session=False)
+    db.query(ChatSession).filter(ChatSession.parcel_id == id).update({"parcel_id": None}, synchronize_session=False)
+
+    db.delete(parcel)
+    db.commit()
+    return {"status": "success", "message": f"Parcel {id} successfully deleted."}
+
 # -------------------------------------------------------------
 # 4. Recommendations (Top 3 cultures + explicabilité)
 # -------------------------------------------------------------
@@ -732,6 +761,32 @@ def get_reforestation_zones(db: Session = Depends(get_db)):
             }
         )
     ]
+
+@router.get("/restoration/plan", tags=["Agronomy"])
+def get_dynamic_restoration_plan_endpoint(parcel_id: Optional[str] = None, db: Session = Depends(get_db)):
+    """
+    Dynamically generates agroforestry and restoration species recommendations
+    via live Tavily web intelligence fused with SoilGrids pedology and local topography. Zero hardcoding.
+    """
+    from app.dynamic_engine import DynamicDataEngine
+    return DynamicDataEngine.get_dynamic_restoration_plan(parcel_id or "", db)
+
+@router.get("/dashboard/dynamic-summary", tags=["Dashboard"])
+def get_dynamic_dashboard_summary_endpoint(db: Session = Depends(get_db)):
+    """
+    Synthesizes real-time macro-agricultural indicators and executive summary
+    by querying Tavily for live 2026 climate and agricultural trends across real user parcels.
+    """
+    from app.dynamic_engine import DynamicDataEngine
+    return DynamicDataEngine.get_dynamic_dashboard_summary(db)
+
+@router.get("/parcels/{id}/dynamic-events", tags=["Agronomy"])
+def get_dynamic_parcel_events_endpoint(id: str, db: Session = Depends(get_db)):
+    """
+    Retrieves satellite-calibrated historical anomalies and enriches them with live Tavily historical climate search.
+    """
+    from app.dynamic_engine import DynamicDataEngine
+    return DynamicDataEngine.get_dynamic_past_events(id, db)
 
 # -------------------------------------------------------------
 # 14. Backtesting & Scientific Validation

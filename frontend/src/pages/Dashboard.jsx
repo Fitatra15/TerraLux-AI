@@ -3,9 +3,15 @@ import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import {
   BarChart3, Download, ShieldCheck, Layers, AlertTriangle,
-  FileSpreadsheet, Users, TreePine, MapPin
+  FileSpreadsheet, Users, TreePine, MapPin, Sparkles, Globe, ExternalLink
 } from 'lucide-react';
-import { cachedGet } from '../api/client';
+import { apiClient, cachedGet } from '../api/client';
+import { 
+  getNasaGibsTileUrl, 
+  NASA_GIBS_ATTRIBUTION, 
+  CARTODB_DARK_MATTER_URL, 
+  CARTODB_ATTRIBUTION 
+} from '../utils/nasaGibs';
 
 const customIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -19,6 +25,7 @@ const customIcon = new L.Icon({
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [dynamicSummary, setDynamicSummary] = useState(null);
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,6 +34,14 @@ export default function Dashboard() {
       try {
         const statsData = await cachedGet('/stats/overview');
         setStats(statsData);
+
+        try {
+          const sumRes = await apiClient.get('/dashboard/dynamic-summary');
+          setDynamicSummary(sumRes.data);
+        } catch (e) {
+          console.warn("Could not fetch dynamic summary:", e);
+        }
+
         const zonesData = await cachedGet('/reforestation/zones');
         setZones(zonesData);
       } catch (err) {
@@ -41,7 +56,7 @@ export default function Dashboard() {
   const handleExportCSV = () => {
     if (!stats || !stats.regions) return;
 
-    const headers = ["Région", "Pays", "Parcelles suivies", "Score de richesse sol (0-100)", "Culture principale", "Risque Cyclonique", "Risque Sécheresse"];
+    const headers = ["Region", "Country", "Parcels Tracked", "Soil Health Score (0-100)", "Primary Recommended Crop", "Cyclone Risk", "Drought Risk"];
     const rows = stats.regions.map(r => [
       `"${r.region}"`,
       `"${r.country}"`,
@@ -56,7 +71,7 @@ export default function Dashboard() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `terralux_rapport_agronomique_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `terralux_agronomy_report_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -70,14 +85,18 @@ export default function Dashboard() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase bg-forest/10 text-forest px-2.5 py-0.5 rounded-full">
-              Ministères & Institutions
+              Ministries & Institutional Investors
+            </span>
+            <span className="text-[11px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-emerald-600" />
+              <span>Live Tavily Fused</span>
             </span>
           </div>
           <h1 className="text-2xl font-black text-forest mt-1 tracking-tight">
-            Tableau de Bord Institutionnel & Territorial
+            Institutional & Territorial Dashboard
           </h1>
           <p className="text-xs text-gray-500">
-            Évaluation territoriale des risques agro-climatiques, santé des terres et planification de résilience
+            Real-time agro-climatic risk modeling, land health diagnostics, and territorial resilience planning.
           </p>
         </div>
 
@@ -86,42 +105,72 @@ export default function Dashboard() {
           className="px-5 py-2.5 bg-forest hover:bg-forest-light text-sand rounded-2xl font-bold text-xs flex items-center gap-2 shadow-md transition-all shrink-0"
         >
           <FileSpreadsheet className="w-4 h-4 text-accent" />
-          <span>Exporter rapport CSV</span>
+          <span>Export CSV Report</span>
         </button>
       </div>
+
+      {/* Dynamic Executive Summary (Tavily + Real Parcels) */}
+      {dynamicSummary && (
+        <div className="bg-gradient-to-br from-forest to-forest-light text-white p-6 rounded-3xl shadow-lg space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-accent">
+              <Globe className="w-4 h-4" />
+              <span className="text-xs font-mono font-bold uppercase tracking-wider">
+                Dynamic Real-Time Synthesis
+              </span>
+            </div>
+            <span className="text-[11px] text-white/70 font-mono">
+              Crawled via Tavily API • 2026 Macro Indicators
+            </span>
+          </div>
+          <p className="text-sm font-light text-sand leading-relaxed">
+            {dynamicSummary.executive_summary}
+          </p>
+
+          {dynamicSummary.live_web_insights && dynamicSummary.live_web_insights.length > 0 && (
+            <div className="pt-2 border-t border-white/10 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-white/80 font-mono">
+              {dynamicSummary.live_web_insights.map((insight, idx) => (
+                <div key={idx} className="bg-white/5 p-2.5 rounded-xl border border-white/5">
+                  • {insight}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 font-semibold block">Parcelles Numérisées</span>
+          <span className="text-xs text-gray-500 font-semibold block">Digitized Parcels</span>
           <div className="text-3xl font-black text-forest font-mono mt-1">
-            {stats?.total_parcels || 48}
+            {dynamicSummary?.total_parcels || stats?.total_parcels || 48}
           </div>
-          <span className="text-[11px] text-emerald-600 font-medium">Cadastre & GPS vérifié</span>
+          <span className="text-[11px] text-emerald-600 font-medium">GPS & Cadastre Verified</span>
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 font-semibold block">Superficie Sous Suivi</span>
+          <span className="text-xs text-gray-500 font-semibold block">Tracked Acreage</span>
           <div className="text-3xl font-black text-forest font-mono mt-1">
-            {stats?.total_area_ha || 142.5} <span className="text-base text-gray-400">ha</span>
+            {dynamicSummary?.total_area_ha || stats?.total_area_ha || 142.5} <span className="text-base text-gray-400">ha</span>
           </div>
-          <span className="text-[11px] text-gray-400">Céréales, tubercules, agroforesterie</span>
+          <span className="text-[11px] text-gray-400">Cereals, tubers, agroforestry</span>
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 font-semibold block">Exploitants Connectés</span>
+          <span className="text-xs text-gray-500 font-semibold block">Connected Farmers</span>
           <div className="text-3xl font-black text-forest font-mono mt-1">
-            {stats?.active_farmers || 34}
+            {dynamicSummary?.active_farmers || stats?.active_farmers || 34}
           </div>
           <span className="text-[11px] text-accent font-medium">Diana & Luxembourg</span>
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm">
-          <span className="text-xs text-gray-500 font-semibold block">Santé Moyenne des Sols</span>
+          <span className="text-xs text-gray-500 font-semibold block">Average Soil Health</span>
           <div className="text-3xl font-black text-forest font-mono mt-1">
-            78.1 <span className="text-base text-gray-400">/100</span>
+            {dynamicSummary?.average_soil_health || 78.4} <span className="text-base text-gray-400">/100</span>
           </div>
-          <span className="text-[11px] text-forest font-medium">Indice utilisable banques & assurances</span>
+          <span className="text-[11px] text-forest font-medium">Bankable Resilience Grade</span>
         </div>
       </div>
 
@@ -129,22 +178,35 @@ export default function Dashboard() {
       <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-forest">Cartographie Territoriale des Pôles Agricoles</h2>
-            <p className="text-xs text-gray-500">Luxembourg (tempéré) et Madagascar (tropical Diana)</p>
+            <h2 className="text-base font-bold text-forest">Territorial Agronomic Mapping</h2>
+            <p className="text-xs text-gray-500">Luxembourg (Temperate Cambisols) and Madagascar (Tropical Ferralsols)</p>
           </div>
-          <span className="text-xs text-gray-400 font-mono">Multi-pays</span>
+          <span className="text-xs text-gray-400 font-mono">Multi-Country Cluster</span>
         </div>
 
-        <div className="h-[380px] rounded-2xl overflow-hidden shadow-inner border border-gray-100">
+        <div className="h-[380px] rounded-2xl overflow-hidden shadow-inner border border-gray-100 relative">
           <MapContainer center={[15.0, 30.0]} zoom={2} style={{ height: '100%', width: '100%' }}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            {/* CartoDB Dark Matter Base */}
+            <TileLayer
+              attribution={CARTODB_ATTRIBUTION}
+              url={CARTODB_DARK_MATTER_URL}
+              maxZoom={19}
+            />
+            {/* NASA GIBS MODIS TrueColor Satellite Overlay */}
+            <TileLayer
+              attribution={NASA_GIBS_ATTRIBUTION}
+              url={getNasaGibsTileUrl()}
+              opacity={0.8}
+              maxNativeZoom={9}
+              maxZoom={18}
+            />
             
             {/* Diana Madagascar Cluster */}
             <Marker position={[-12.2794, 49.2914]} icon={customIcon}>
               <Popup>
                 <div className="font-sans">
-                  <strong>Pôle Régional Diana (Madagascar)</strong>
-                  <p className="text-xs text-gray-600">32 parcelles • Richesse 74.2/100 • Risque cyclone</p>
+                  <strong>Diana Region Hub (Madagascar)</strong>
+                  <p className="text-xs text-gray-600">Ferralsols • Vanilla, Rice & Moringa • Cyclone Risk Monitoring</p>
                 </div>
               </Popup>
             </Marker>
@@ -154,31 +216,31 @@ export default function Dashboard() {
             <Marker position={[49.6116, 6.1319]} icon={customIcon}>
               <Popup>
                 <div className="font-sans">
-                  <strong>Pôle Luxembourg & Gutland</strong>
-                  <p className="text-xs text-gray-600">16 parcelles • Richesse 82.0/100 • Risque sécheresse</p>
+                  <strong>Luxembourg & Gutland Hub</strong>
+                  <p className="text-xs text-gray-600">Cambisols & Schists • Wheat, Rapeseed & Oak • Drought Stress Tests</p>
                 </div>
               </Popup>
             </Marker>
-            <Circle center={[49.6116, 6.1319]} radius={50000} pathOptions={{ color: '#1a4d2e', fillColor: '#1a4d2e', fillOpacity: 0.2 }} />
+            <Circle center={[49.6116, 6.1319]} radius={50000} pathOptions={{ color: '#10b981', fillColor: '#10b981', fillOpacity: 0.2 }} />
           </MapContainer>
         </div>
       </div>
 
       {/* Regions Breakdown Table */}
       <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
-        <h2 className="text-base font-bold text-forest">Synthèse par Région Agricole</h2>
+        <h2 className="text-base font-bold text-forest">Agricultural Region Breakdown</h2>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-gray-700">
             <thead className="bg-sand/40 text-forest uppercase font-bold text-[10px] tracking-wider border-b border-sand-dark/30">
               <tr>
-                <th className="py-3 px-4 rounded-l-xl">Région</th>
-                <th className="py-3 px-4">Pays</th>
-                <th className="py-3 px-4">Parcelles</th>
-                <th className="py-3 px-4">Score Sol</th>
-                <th className="py-3 px-4">Culture Recommandée</th>
-                <th className="py-3 px-4">Risque Cyclonique</th>
-                <th className="py-3 px-4 rounded-r-xl">Risque Sécheresse</th>
+                <th className="py-3 px-4 rounded-l-xl">Region</th>
+                <th className="py-3 px-4">Country</th>
+                <th className="py-3 px-4">Parcels</th>
+                <th className="py-3 px-4">Soil Score</th>
+                <th className="py-3 px-4">Primary Recommended Crop</th>
+                <th className="py-3 px-4">Cyclone Threat</th>
+                <th className="py-3 px-4 rounded-r-xl">Drought Risk</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -198,14 +260,14 @@ export default function Dashboard() {
                   <td className="py-3.5 px-4 font-medium text-emerald-800">{reg.top_recommended_crop}</td>
                   <td className="py-3.5 px-4">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      reg.cyclone_risk.includes('Élevé') ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                      reg.cyclone_risk.includes('Élevé') || reg.cyclone_risk.includes('High') ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
                     }`}>
                       {reg.cyclone_risk}
                     </span>
                   </td>
                   <td className="py-3.5 px-4">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      reg.drought_risk.includes('Élevé') ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
+                      reg.drought_risk.includes('Élevé') || reg.drought_risk.includes('High') ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
                     }`}>
                       {reg.drought_risk}
                     </span>
@@ -221,7 +283,7 @@ export default function Dashboard() {
       <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm space-y-4">
         <div className="flex items-center gap-2 text-forest">
           <TreePine className="w-5 h-5 text-emerald-700" />
-          <h2 className="text-base font-bold">Zones Prioritaires de Reboisement & Lutte contre l'Érosion</h2>
+          <h2 className="text-base font-bold">Priority Restoration Zones & Erosion Mitigation</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -234,10 +296,10 @@ export default function Dashboard() {
                 </span>
               </div>
               <p className="text-xs text-emerald-800">
-                <strong>Objectif :</strong> {z.risk_type}
+                <strong>Objective:</strong> {z.risk_type}
               </p>
               <div>
-                <span className="text-[11px] font-semibold text-emerald-900 block">Essences recommandées :</span>
+                <span className="text-[11px] font-semibold text-emerald-900 block">Candidate Resilient Species:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {z.species_proposed?.map((sp, sIdx) => (
                     <span key={sIdx} className="text-[10px] bg-white border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-md">

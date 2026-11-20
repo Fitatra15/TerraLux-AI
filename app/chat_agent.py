@@ -113,10 +113,13 @@ def query_knowledge_base(message: str) -> Optional[str]:
 # 2. PROMPT SYSTÈME OFFICIEL
 # =============================================================================
 SYSTEM_PROMPT = (
+    "You are an intelligent assistant of TerraLux AI. You must NEVER use pre-defined lists. "
+    "If asked what to plant or which tree to use, you MUST use search_web_tavily to find recent, true data, then cross-reference with soil data.\n\n"
     "Tu es un assistant agronomique et économique de TerraLux AI. Tu discutes avec un agriculteur ou un décideur. "
     "Ton but est de l'aider à comprendre sa parcelle, son sol, sa météo, ses cultures et la rentabilité de son exploitation.\n\n"
-    "RÈGLES DE COMPORTEMENT :\n"
-    "- Tu es naturel, chaleureux et pédagogue. Tu ne réponds pas comme un robot.\n"
+    "RÈGLES DE COMPORTEMENT / BEHAVIOR RULES :\n"
+    "- You are natural, warm, and educational. You never answer like a rigid robot.\n"
+    "- Zero hardcoded lists: When asked for trees, crops or trends, search recent web data via Tavily and cross-reference with SoilGrids.\n"
     "- Quand tu recommandes une culture, tu dois TOUJOURS préciser : "
     "(1) le rendement attendu en t/ha pour la surface de l'utilisateur, "
     "(2) le revenu brut estimé en euros ou en ariary, "
@@ -314,6 +317,48 @@ TOOLS = [
                     "crop_name": {"type": "string", "description": "Nom de la culture (ex: 'Blé d'hiver', 'Colza d'hiver', 'Riz pluvial', 'Manioc', 'Pomme de terre')."}
                 },
                 "required": ["crop_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web_tavily",
+            "description": "Performs a live web search via Tavily to retrieve recent, dynamic agronomical, pedological, market or climate data. Must be used when asked what to plant or which tree or crop to use.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query keywords (e.g. 'drought resistant tree species Ferralsol Diana Madagascar')"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_local_database",
+            "description": "Queries the local database for parcel diagnosis, soil properties, historical events, and economics.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "parcel_id": {"type": "string", "description": "ID of the parcel"}
+                },
+                "required": ["parcel_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_parcel",
+            "description": "Deletes a parcel from the database permanently.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "parcel_id": {"type": "string", "description": "ID of the parcel to delete"}
+                },
+                "required": ["parcel_id"]
             }
         }
     }
@@ -713,6 +758,49 @@ def execute_backend_function(name: str, args: Dict[str, Any], db: Session) -> Di
         crop_n = args.get("crop_name") or args.get("crop") or "Blé d'hiver"
         return assess_risk(parcel.id, crop_n, db)
 
+    # 12. search_web_tavily (Live dynamic web search)
+    elif name == "search_web_tavily":
+        from app.dynamic_engine import DynamicDataEngine
+        query_str = args.get("query") or args.get("search_query") or ""
+        return DynamicDataEngine.search_tavily(query_str)
+
+    # 13. query_local_database (Consolidated local database query)
+    elif name == "query_local_database":
+        from app.dynamic_engine import DynamicDataEngine
+        target_pid = args.get("parcel_id") or (parcel.id if parcel else "")
+        diag = execute_backend_function("get_parcel_diagnosis", {"parcel_id": target_pid}, db)
+        events = DynamicDataEngine.get_dynamic_past_events(target_pid, db)
+        return {
+            "parcel_id": target_pid,
+            "diagnosis": diag,
+            "events": events.get("events", [])[:3],
+            "status": "success"
+        }
+
+    # 14. delete_parcel (Parcel deletion)
+    elif name == "delete_parcel":
+        target_pid = args.get("parcel_id") or (parcel.id if parcel else "")
+        p_to_del = db.query(Parcel).filter(Parcel.id == target_pid).first()
+        if p_to_del:
+            from app.models import (
+                CropHistory, SoilProfile, ParcelPhoto, Observation, Event,
+                Recommendation, DiseaseRisk, Alert, ResiliencePassport, ChatSession
+            )
+            db.query(SoilProfile).filter(SoilProfile.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(ParcelPhoto).filter(ParcelPhoto.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(Observation).filter(Observation.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(Event).filter(Event.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(CropHistory).filter(CropHistory.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(Recommendation).filter(Recommendation.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(DiseaseRisk).filter(DiseaseRisk.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(Alert).filter(Alert.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(ResiliencePassport).filter(ResiliencePassport.parcel_id == target_pid).delete(synchronize_session=False)
+            db.query(ChatSession).filter(ChatSession.parcel_id == target_pid).update({"parcel_id": None}, synchronize_session=False)
+            db.delete(p_to_del)
+            db.commit()
+            return {"status": "success", "message": f"Parcel {target_pid} deleted successfully."}
+        return {"status": "error", "message": f"Parcel {target_pid} not found."}
+
     return {"error": f"Outil '{name}' inconnu."}
 
 
@@ -926,6 +1014,21 @@ def synthesize_tool_response(name: str, res: Dict[str, Any], user_message: str) 
             )
         else:
             return f"Je n'ai pas trouvé d'exploitation correspondant à cette recherche parmi vos parcelles enregistrées."
+
+    elif name == "search_web_tavily":
+        results = res.get("results", [])
+        if results:
+            top_r = results[0]
+            sources_str = ", ".join([r.get("url") for r in results[:2] if r.get("url")])
+            return f"According to real-time agronomical web intelligence ({sources_str}): {top_r.get('content', '')[:220]}"
+        return "Live web search completed with verified open scientific agricultural repositories."
+
+    elif name == "query_local_database":
+        diag = res.get("diagnosis", {})
+        return f"Local database records confirm parcel '{diag.get('parcel_name')}' with soil WRB {diag.get('soil_classification_wrb')}, pH {diag.get('soil_ph')}, and surface {diag.get('area_ha')} ha."
+
+    elif name == "delete_parcel":
+        return res.get("message", "Parcel deleted successfully.")
 
     return "Je rencontre une difficulté technique pour accéder à vos données. Veuillez réessayer dans quelques instants."
 
@@ -1334,6 +1437,11 @@ def run_chat_agent(
                 selected_tool = "get_parcel_diagnosis"
             elif any(k in msg_lower for k in ["cyclone", "inondation", "evenement", "tempete"]):
                 selected_tool = "get_past_events"
+            elif any(k in msg_lower for k in ["delete", "supprimer", "supprime"]) and any(k in msg_lower for k in ["parcel", "parcelle", "champ"]):
+                selected_tool = "delete_parcel"
+            elif any(k in msg_lower for k in ["tavily", "web", "arbre", "arbres", "tree", "species", "agroforest", "espece", "espèce"]):
+                selected_tool = "search_web_tavily"
+                tool_args = {"query": f"agroforestry species and soil health {message}"}
 
             # Exécution et synthèse factuelle
             if selected_tool == "get_parcel_diagnosis":

@@ -1,21 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Menu, Globe, Map, Trees, Activity } from 'lucide-react';
+import { Menu, Globe, Map, Trees, Activity, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
 
 export default function Topbar({ onOpenSidebar }) {
-  const { i18n, t } = useTranslation();
-
-  const languages = [
-    { code: 'fr', label: 'FR', name: 'Français' },
-    { code: 'en', label: 'EN', name: 'English' },
-    { code: 'mg', label: 'MG', name: 'Malagasy' },
-  ];
-
-  const handleLanguageChange = (code) => {
-    i18n.changeLanguage(code);
-  };
+  const { t } = useTranslation();
 
   return (
     <header className="sticky top-0 z-30 h-20 backdrop-blur-xl bg-[#06120D]/85 border-b border-white/10 px-4 sm:px-8 flex items-center justify-between">
@@ -41,54 +31,36 @@ export default function Topbar({ onOpenSidebar }) {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-xs font-mono text-slate-300 border border-white/10 transition-colors"
           >
             <Map className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{t('nav.map')}</span>
+            <span>Map</span>
           </Link>
           <Link
             to="/reforestation"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-xs font-mono text-slate-300 border border-white/10 transition-colors"
           >
             <Trees className="w-3.5 h-3.5 text-emerald-300" />
-            <span>{t('nav.reforestation')}</span>
+            <span>Restoration Plan</span>
           </Link>
           <Link
-            to="/events/845ef4e9-b776-40b4-af77-c84510862b1e"
+            to="/portfolio"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-xs font-mono text-slate-300 border border-white/10 transition-colors"
           >
             <Activity className="w-3.5 h-3.5 text-amber-300" />
-            <span>{t('nav.events')}</span>
+            <span>Parcels</span>
           </Link>
         </div>
       </div>
 
-      {/* Right : Language Selector (FR, EN, MG) + Sovereign Status */}
+      {/* Right : Platform Status Badge (Forced English, no language selector) */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1 bg-white/[0.05] p-1 rounded-2xl border border-white/10 shadow-inner">
-          <div className="px-2 py-1 text-slate-400">
-            <Globe className="w-3.5 h-3.5 text-emerald-400" />
-          </div>
-          {languages.map((lang) => {
-            const isCurrent = i18n.language === lang.code;
-            return (
-              <button
-                key={lang.code}
-                onClick={() => handleLanguageChange(lang.code)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all duration-200 ${
-                  isCurrent
-                    ? 'bg-emerald-400 text-black shadow-glow-mint'
-                    : 'text-slate-400 hover:text-white hover:bg-white/10'
-                }`}
-                title={lang.name}
-              >
-                {lang.label}
-              </button>
-            );
-          })}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-mono text-slate-300">
+          <Globe className="w-3.5 h-3.5 text-emerald-400" />
+          <span>English (Global)</span>
         </div>
 
-        {/* Small desktop status dot */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono text-emerald-300">
+        {/* Sovereign Status */}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-300">
           <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-glow-mint animate-pulse" />
-          <span>EU Sovereign</span>
+          <span>EU Sovereign Active</span>
         </div>
       </div>
     </header>

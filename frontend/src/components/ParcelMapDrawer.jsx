@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polygon, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { MapPin, Navigation, Compass, Layers, RotateCcw, Check, Sparkles } from 'lucide-react';
-import { getNasaGibsTileUrl, NASA_GIBS_ATTRIBUTION } from '../utils/nasaGibs';
+import { getNasaGibsTileUrl, NASA_GIBS_ATTRIBUTION, CARTODB_DARK_MATTER_URL, CARTODB_ATTRIBUTION } from '../utils/nasaGibs';
 import { apiClient } from '../api/client';
 
 // Custom Map Marker Icon
@@ -162,14 +162,14 @@ export default function ParcelMapDrawer({
         <div>
           <label className="block text-[11px] font-mono text-slate-300 mb-1 flex items-center gap-1.5">
             <Compass className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Sélectionner une commune (Menu déroulant)</span>
+            <span>Administrative Selection (Luxembourg & Madagascar)</span>
           </label>
           <select
             value={selectedLocId}
             onChange={(e) => handleLocationSelect(e.target.value)}
             className="w-full bg-[#0a1d15] border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-sans"
           >
-            <option value="">-- Choisir une commune ou ville --</option>
+            <option value="">-- Choose a commune or city --</option>
             {locations.map((loc) => (
               <option key={loc.id} value={loc.id}>
                 {loc.label}
@@ -182,7 +182,7 @@ export default function ParcelMapDrawer({
         <div>
           <label className="block text-[11px] font-mono text-slate-300 mb-1 flex items-center gap-1.5">
             <Navigation className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Positionnement temps réel</span>
+            <span>Real-time Positioning</span>
           </label>
           <button
             type="button"
@@ -191,7 +191,7 @@ export default function ParcelMapDrawer({
             className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-mono transition-all"
           >
             <Navigation className={`w-3.5 h-3.5 ${gpsLoading ? 'animate-spin' : ''}`} />
-            <span>{gpsLoading ? 'Acquisition GPS en cours...' : 'Utiliser ma position GPS actuelle'}</span>
+            <span>{gpsLoading ? 'Acquiring GPS position...' : 'Use My Current GPS Position'}</span>
           </button>
         </div>
       </div>
@@ -206,10 +206,10 @@ export default function ParcelMapDrawer({
       <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-mono">
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-emerald-400" />
-          <span className="text-slate-300 font-semibold">Outil Polygone (Calcul surface) :</span>
+          <span className="text-slate-300 font-semibold">Polygon Tool (Area calculation):</span>
           {polygonCoords.length > 0 && (
             <span className="text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
-              {polygonCoords.length} sommets • {calculatePolygonAreaHa(polygonCoords)} ha
+              {polygonCoords.length} vertices • {calculatePolygonAreaHa(polygonCoords)} ha
             </span>
           )}
         </div>
@@ -222,12 +222,12 @@ export default function ParcelMapDrawer({
               className="px-3 py-1 bg-emerald-400 hover:bg-emerald-300 text-black font-semibold rounded-lg text-[11px] transition-all flex items-center gap-1"
             >
               <Sparkles className="w-3 h-3" />
-              <span>Dessiner mon champ</span>
+              <span>Draw field boundary</span>
             </button>
           ) : (
             <>
               <span className="text-[11px] text-amber-300 animate-pulse">
-                Cliquez sur la carte pour délimiter le champ
+                Click on the map to trace your parcel boundary
               </span>
               <button
                 type="button"
@@ -235,7 +235,7 @@ export default function ParcelMapDrawer({
                 className="px-2.5 py-1 bg-emerald-500 text-black font-bold rounded-lg text-[11px] flex items-center gap-1"
               >
                 <Check className="w-3 h-3" />
-                <span>Terminer</span>
+                <span>Finish</span>
               </button>
             </>
           )}
@@ -245,7 +245,7 @@ export default function ParcelMapDrawer({
               type="button"
               onClick={handleResetPolygon}
               className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10"
-              title="Effacer le tracé"
+              title="Clear polygon"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -261,17 +261,19 @@ export default function ParcelMapDrawer({
           style={{ height: '100%', width: '100%', background: '#071610' }}
           attributionControl={false}
         >
-          {/* NASA GIBS MODIS TrueColor Satellite Layer (2 days ago) */}
+          {/* CartoDB Dark Matter Base Layer */}
+          <TileLayer
+            url={CARTODB_DARK_MATTER_URL}
+            maxZoom={19}
+            attribution={CARTODB_ATTRIBUTION}
+          />
+          {/* NASA GIBS MODIS TrueColor Satellite Overlay */}
           <TileLayer
             url={getNasaGibsTileUrl()}
-            maxZoom={9}
+            opacity={0.8}
+            maxNativeZoom={9}
+            maxZoom={18}
             attribution={NASA_GIBS_ATTRIBUTION}
-          />
-          {/* Detailed OpenStreetMap vector hybrid overlay for parcel precision */}
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png"
-            opacity={0.45}
-            maxZoom={19}
           />
 
           <MapController center={centerCoords} zoom={isDrawing ? 15 : 13} />

@@ -8,9 +8,10 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_STR: str = ""
     
-    # LLM & Function Calling (OpenAI, Groq, Ollama)
+    # LLM & Function Calling (OpenAI, Groq, Ollama, Tavily)
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY")
+    TAVILY_API_KEY: Optional[str] = os.getenv("TAVILY_API_KEY")
     OLLAMA_URL: Optional[str] = os.getenv("OLLAMA_URL", os.getenv("OLLAMA_HOST"))
     LLM_MODEL: str = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
     
