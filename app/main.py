@@ -761,18 +761,18 @@ def get_alerts(db: Session = Depends(get_db)):
         AlertOut(
             id="alt-1",
             parcel_id="demo-diana",
-            type="Météo / Cyclone",
+            type="Weather / Cyclone",
             severity="warning",
-            text="Alerte vigilance fortes pluies : dépression tropicale active dans le canal du Mozambique. Prévoyez le drainage des parcelles basses.",
+            text="Heavy rain vigilance alert: active tropical depression in the Mozambique Channel. Plan adequate drainage for low-lying fields.",
             created_at=now,
             read=False
         ),
         AlertOut(
             id="alt-2",
             parcel_id="demo-diana",
-            type="Sanitaire / Mildiou",
+            type="Crop Health / Downy Mildew",
             severity="critical",
-            text="Hygrométrie > 90% maintenue sur 48h. Risque d'apparition du mildiou très élevé. Inspectez le revers des feuilles.",
+            text="Relative humidity > 90% sustained over 48 hours. Very high risk of downy mildew onset. Inspect the undersides of leaves.",
             created_at=now,
             read=False
         )
@@ -797,18 +797,18 @@ def get_stats_overview(db: Session = Depends(get_db)):
                 country="Madagascar",
                 parcels_count=32,
                 avg_soil_richness=74.2,
-                top_recommended_crop="Riz pluvial / Manioc / Cacao",
-                cyclone_risk="Élevé (Saison cyclonique active)",
-                drought_risk="Modéré (Décrue octobre)"
+                top_recommended_crop="Rainfed Rice / Cassava / Cocoa",
+                cyclone_risk="High (Active Cyclone Season)",
+                drought_risk="Moderate (October Low-flow)"
             ),
             RegionStat(
                 region="Luxembourg & Gutland",
                 country="Luxembourg",
                 parcels_count=16,
                 avg_soil_richness=82.0,
-                top_recommended_crop="Blé d'hiver / Colza / Orge",
-                cyclone_risk="Nul",
-                drought_risk="Élevé (Périodes estivales sèches récurrentes)"
+                top_recommended_crop="Winter Wheat / Rapeseed / Barley",
+                cyclone_risk="None",
+                drought_risk="High (Recurrent Dry Summer Periods)"
             )
         ]
     )
@@ -820,7 +820,22 @@ def get_stats_overview(db: Session = Depends(get_db)):
 def get_reforestation_zones(db: Session = Depends(get_db)):
     zones = db.query(ReforestationZone).all()
     if zones:
-        return zones
+        res = []
+        for z in zones:
+            n_low = (z.name or "").lower()
+            r_low = (z.risk_type or "").lower()
+            name_en = "Sambirano Watershed (Ambanja)" if "sambirano" in n_low else ("Alzette Hydrographic Buffer Zone (Esch / Bettembourg)" if "alzette" in n_low else z.name)
+            risk_en = "Soil Erosion & Cyclonic Runoff" if any(k in r_low for k in ["érosion", "erosion", "cyclon"]) else ("Flood Retention & Ecological Corridor" if any(k in r_low for k in ["rétention", "flood", "corridor"]) else z.risk_type)
+            species_en = ["Madagascar Cinnamon", "Moringa oleifera", "Acacia mangium", "Albizia lebbeck"] if "sambirano" in n_low else ["Salix alba (White Willow)", "Alnus glutinosa (Black Alder)", "Quercus robur (English Oak)"]
+            res.append(ReforestationZoneOut(
+                id=str(z.id),
+                name=name_en,
+                risk_type=risk_en,
+                species_proposed=species_en,
+                area_ha=float(z.area_ha) if z.area_ha else 100.0,
+                polygon_geojson=z.polygon_geojson
+            ))
+        return res
     
     return [
         ReforestationZoneOut(

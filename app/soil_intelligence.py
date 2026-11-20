@@ -102,39 +102,39 @@ def get_soil_profile(parcel_id: str, db: Session) -> Dict[str, Any]:
 
         richness = round(0.50 * idx_0_5 + 0.30 * idx_5_15 + 0.20 * idx_15_30, 1)
 
-    # Détection des carences selon Prompt 4
+    # Détection des carences
     deficiencies: List[str] = []
     if surface_soc < 10.0:
-        deficiencies.append("carence carbone")
+        deficiencies.append("Carbon deficiency")
     if surface_n < 1.0:
-        deficiencies.append("carence azote")
+        deficiencies.append("Nitrogen deficiency")
     if surface_cec < 10.0:
-        deficiencies.append("faible rétention nutriments")
+        deficiencies.append("Low nutrient retention capacity")
     if surface_ph < 5.5:
-        deficiencies.append("acidité excessive (risque blocage phosphore)")
+        deficiencies.append("Excessive acidity (phosphorus lock-up risk)")
 
     # Qualification du score
     if richness >= 80:
         richness_label = "Excellent"
     elif richness >= 65:
-        richness_label = "Bon"
+        richness_label = "Good"
     elif richness >= 50:
-        richness_label = "Moyen"
+        richness_label = "Moderate"
     else:
-        richness_label = "Dégradé / Faible"
+        richness_label = "Degraded / Low"
 
     # Interprétation experte
-    is_diana = parcel and (parcel.country == "MDG" or (parcel.region and "Diana" in parcel.region))
+    lat = float(parcel.latitude) if (parcel and parcel.latitude is not None) else 0.0
+    is_diana = (lat < 0) or (parcel and (parcel.country == "MDG" or (parcel.region and "Diana" in parcel.region)))
     if is_diana or "Ferralsol" in wrb:
-        def_text = f", avec {', '.join(deficiencies)}" if deficiencies else "avec un bon équilibre minéral"
         interpretation = (
-            f"Sol {wrb} typique de la région Diana. Bonne teneur en matière organique en surface ({surface_soc} g/kg), "
-            f"mais azote et phosphore limitants pour les cultures exigeantes. Préférer les engrais organiques et paillage."
+            f"Tropical {wrb} soil characteristic of the Diana region. Good surface organic matter content ({surface_soc} g/kg), "
+            f"but nitrogen and phosphorus can be limiting for demanding crops. Organic amendments and bio-mulching recommended."
         )
     else:
         interpretation = (
-            f"Sol {wrb} tempéré à haute fertilité naturelle (indice {richness}/100). "
-            f"Excellente réserve utile et pH optimal ({surface_ph}) pour les céréales et légumineuses luxembourgeoises."
+            f"Temperate {wrb} soil with high natural fertility (index {richness}/100). "
+            f"Excellent plant available water capacity and optimal pH ({surface_ph}) for Luxembourg cereals and legumes."
         )
 
     return {
@@ -147,27 +147,27 @@ def get_soil_profile(parcel_id: str, db: Session) -> Dict[str, Any]:
                 "value": float(surface_soc),
                 "unit": "g/kg",
                 "depth": "0-5cm",
-                "status": "Bon" if surface_soc >= 20 else ("Moyen" if surface_soc >= 10 else "Faible")
+                "status": "Good" if surface_soc >= 20 else ("Moderate" if surface_soc >= 10 else "Low")
             },
             "nitrogen": {
                 "value": float(surface_n),
                 "unit": "g/kg",
                 "depth": "0-5cm",
-                "status": "Satisfaisant" if surface_n >= 2.0 else ("Moyen" if surface_n >= 1.0 else "Carence")
+                "status": "Satisfactory" if surface_n >= 2.0 else ("Moderate" if surface_n >= 1.0 else "Deficient")
             },
             "cec": {
                 "value": float(surface_cec),
                 "unit": "cmol/kg",
                 "depth": "0-5cm",
-                "status": "Élevé" if surface_cec >= 20 else ("Moyen" if surface_cec >= 10 else "Faible")
+                "status": "High" if surface_cec >= 20 else ("Moderate" if surface_cec >= 10 else "Low")
             },
             "ph": {
                 "value": float(surface_ph),
                 "unit": "pH H2O",
                 "depth": "0-5cm",
-                "status": "Optimal" if 6.0 <= surface_ph <= 7.2 else ("Acide" if surface_ph < 6.0 else "Basique")
+                "status": "Optimal" if 6.0 <= surface_ph <= 7.2 else ("Acidic" if surface_ph < 6.0 else "Alkaline")
             }
         },
-        "deficiencies": deficiencies if deficiencies else ["Aucune carence majeure détectée"],
+        "deficiencies": deficiencies if deficiencies else ["No major deficiency detected"],
         "interpretation": interpretation
     }

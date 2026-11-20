@@ -178,17 +178,10 @@ export default function ReforestationPlanScreen() {
                 zoomControl={true}
                 className="w-full h-full"
               >
-                {/* Continuous Seamless Satellite Imagery Base */}
+                {/* Continuous Seamless Satellite Imagery Base (Esri World Imagery) */}
                 <TileLayer
                   attribution={ESRI_WORLD_IMAGERY_ATTRIBUTION}
                   url={ESRI_WORLD_IMAGERY_URL}
-                  maxZoom={19}
-                />
-                {/* CartoDB Dark Matter subtle contrast tint */}
-                <TileLayer
-                  attribution={CARTODB_ATTRIBUTION}
-                  url={CARTODB_DARK_MATTER_URL}
-                  opacity={0.3}
                   maxZoom={19}
                 />
 

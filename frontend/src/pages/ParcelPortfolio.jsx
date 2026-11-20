@@ -11,10 +11,8 @@ import { cachedGet, apiClient } from '../api/client';
 import RadialProgress from '../components/RadialProgress';
 import ParcelMapDrawer from '../components/ParcelMapDrawer';
 import { 
-  getNasaGibsTileUrl, 
-  NASA_GIBS_ATTRIBUTION, 
-  CARTODB_DARK_MATTER_URL, 
-  CARTODB_ATTRIBUTION 
+  ESRI_WORLD_IMAGERY_URL, 
+  ESRI_WORLD_IMAGERY_ATTRIBUTION 
 } from '../utils/nasaGibs';
 
 const miniIcon = new L.DivIcon({
@@ -280,16 +278,9 @@ export default function ParcelPortfolio() {
                       className="w-full h-full"
                     >
                       <TileLayer
-                        url={CARTODB_DARK_MATTER_URL}
-                        attribution={CARTODB_ATTRIBUTION}
+                        url={ESRI_WORLD_IMAGERY_URL}
+                        attribution={ESRI_WORLD_IMAGERY_ATTRIBUTION}
                         maxZoom={19}
-                      />
-                      <TileLayer
-                        url={getNasaGibsTileUrl()}
-                        attribution={NASA_GIBS_ATTRIBUTION}
-                        opacity={0.8}
-                        maxNativeZoom={9}
-                        maxZoom={18}
                       />
                       <Marker position={[lat, lng]} icon={miniIcon} />
                     </MapContainer>

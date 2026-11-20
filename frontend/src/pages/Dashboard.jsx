@@ -188,17 +188,10 @@ export default function Dashboard() {
 
         <div className="h-[380px] rounded-2xl overflow-hidden shadow-inner border border-gray-100 relative">
           <MapContainer center={[15.0, 30.0]} zoom={2} style={{ height: '100%', width: '100%' }}>
-            {/* Continuous Seamless Satellite Imagery Base (100% continuous, zero orbital black gaps) */}
+            {/* Continuous Seamless Satellite Imagery Base (Esri World Imagery) */}
             <TileLayer
               attribution={ESRI_WORLD_IMAGERY_ATTRIBUTION}
               url={ESRI_WORLD_IMAGERY_URL}
-              maxZoom={19}
-            />
-            {/* CartoDB Dark Matter subtle contrast tint */}
-            <TileLayer
-              attribution={CARTODB_ATTRIBUTION}
-              url={CARTODB_DARK_MATTER_URL}
-              opacity={0.3}
               maxZoom={19}
             />
             

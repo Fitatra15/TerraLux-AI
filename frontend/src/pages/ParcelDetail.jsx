@@ -12,7 +12,12 @@ import {
 import { cachedGet, apiClient } from '../api/client';
 import ChatWidget from '../components/ChatWidget';
 import LeafDiagnoseModal from '../components/LeafDiagnoseModal';
-import { getNasaGibsTileUrl, NASA_GIBS_ATTRIBUTION } from '../utils/nasaGibs';
+import { 
+  getNasaGibsTileUrl, 
+  NASA_GIBS_ATTRIBUTION,
+  ESRI_WORLD_IMAGERY_URL,
+  ESRI_WORLD_IMAGERY_ATTRIBUTION 
+} from '../utils/nasaGibs';
 
 const customIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -485,10 +490,9 @@ export default function ParcelDetail() {
                 style={{ height: '100%', width: '100%' }}
               >
                 <TileLayer
-                  attribution={NASA_GIBS_ATTRIBUTION}
-                  url={getNasaGibsTileUrl()}
-                  maxNativeZoom={9}
-                  maxZoom={18}
+                  attribution={ESRI_WORLD_IMAGERY_ATTRIBUTION}
+                  url={ESRI_WORLD_IMAGERY_URL}
+                  maxZoom={19}
                 />
                 <Marker position={[lat, lng]} icon={customIcon}>
                   <Popup>{parcel?.name}</Popup>
